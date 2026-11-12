@@ -1,0 +1,453 @@
+==================================================================
+FPSLabGame - PROJECT VANGUARD STORY PROMPT (CONTINUATION, STAGES V0 TO V11)
+==================================================================
+
+Act as a senior C++ Game Developer and Qt Framework Expert.
+
+HOW TO USE THIS PROMPT
+This prompt is a CONTINUATION. Paste it together with the MASTER PROMPT (FPSLabGame_Master_Prompt_Final_v2.txt).
+The master prompt keeps governing the technology, the pixel / Minecraft style, the coding rules, the Qt rules, the
+AI verification rule and the stage pause rule. This prompt only REPLACES the old story/map/enemy plan from the
+master prompt's Stage 13 onward and ADDS the Project VANGUARD story.
+
+CURRENT STATE OF THE PROJECT
+* Project name: FPSLabGame (Qt 6, Qt Quick 3D, C++, QML, CMake). It is an EXISTING, working project in the folder that is open now.
+* Master-prompt Stages 1 to 12 are ALREADY COMPLETED. Do NOT create a new project. Do NOT redo or rewrite Stages 1 to 12.
+* Stages 13 to 17 of the master prompt are NOT done and are REPLACED by the stages V0 to V11 below.
+
+==================================================================
+!!! STOP AFTER EVERY STAGE (MOST IMPORTANT RULE OF THIS PROMPT) !!!
+==================================================================
+
+After finishing ANY stage (V0, V1, V2 ... V11), STOP COMPLETELY. Do NOT start the next stage on your own,
+even if the build passes and everything works.
+
+At the end of each stage, reply with a short STAGE REPORT containing:
+1. Stage number and name that was just completed.
+2. Files created, changed or deleted in this stage.
+3. What was verified and how. Say clearly which checks were REALLY built/run and which were only statically checked
+   (follow the AI VERIFICATION RULE from the master prompt).
+4. Exact steps for ME to test this stage in Qt Creator (what to run, what I should see, which keys to press).
+5. Known issues or limitations.
+6. The name of the next stage and the exact message I should send to start it, for example: "start Stage V3".
+
+Then WAIT. Begin the next stage ONLY after I explicitly reply to start it ("start Stage V3" or "continue").
+If I report a problem, fix the current stage first and send a new stage report. Never combine two stages in one step.
+If this prompt is pasted again in a new chat, start again with Stage V0 only.
+
+==================================================================
+STORY: PROJECT VANGUARD
+==================================================================
+
+The player is a systems engineer trapped inside a classified robotics foundry. A rogue military AI named VANGUARD has
+taken over the facility and its robots. The player must fight through three areas and shut VANGUARD down:
+
+LEVEL 1 - FABRICATION FLOORS : claustrophobic crate maze, melee Drones, a Loading Bay fight, extraction elevator.
+LEVEL 2 - THE ARMORY         : long hallways and vaults, ranged Sentinels, an ammo and heavy-weapon cache, crossfire traps, descent shaft.
+LEVEL 3 - THE LOGIC CORE     : gladiator arena, the VANGUARD core in the center, four Cooling Vents to destroy, endless Drones.
+
+WIN: all four Cooling Vents destroyed -> "VANGUARD DESTROYED" overlay.
+LOSE: player health reaches zero -> GAME OVER.
+
+==================================================================
+WHAT CHANGES COMPARED TO THE MASTER PROMPT
+==================================================================
+
+REMOVED (clean everything up, leave no orphan files, no dead CMake entries, no unused QML):
+* Desert, Forest and Snow environments (data, QML, textures that only they used, particles that only they used).
+* The three-path choice (Left / Front / Right).
+* The "shoot the door to open it" intro and the start-room story.
+* Environment-specific code (snow particles, pond water, cabin, trees, ruins, etc.).
+* The planned cover-point logic for the enemy sniper (cover points are no longer needed).
+
+KEPT (do not touch unless a stage says so):
+* Everything from Stages 1 to 11: GameManager, Player (walk, jump, crouch, mouse-look), Weapon + Sniper (scope, raycast,
+  head/body damage), HealthSystem, Inventory (Food Pack +20, Bandage +30, Medkit +50), Pickup, HUD, menus,
+  Pause / Restart / Main Menu / Game Over / Win screen, delta-time movement, GameConfig.h.
+* The PIXEL / MINECRAFT STYLE RULES of the master prompt (cubes, 16x16 Nearest-filtered textures, flat non-shiny
+  materials, no anti-aliasing, pixel font HUD, blocky models and particles).
+* Controls: WASD, Space, Ctrl/C, Right Mouse (aim / scope), Left Mouse (shoot), R (reload), 1/2/3 (use Food / Bandage /
+  Medkit), Esc (pause). NEW: Q (and mouse wheel) switches weapon.
+
+ADDED:
+* Story screens, a level system driven by 2D tile arrays, three VANGUARD levels, Drone and Sentinel enemies,
+  a second (heavy) weapon, trigger traps, a boss made of four Cooling Vents.
+
+PRECEDENCE (overrides ONLY these older limits, everything else still applies):
+1. Pathfinding: the old "no pathfinding" rule is overridden ONLY for a small BFS (or simple A*) on the tile grid,
+   used by Drones and by Sentinels that search. No navmesh, no steering framework, no external library.
+2. Weapons: the old "one weapon" rule is overridden ONLY for ONE extra heavy weapon (Level 2 pickup).
+3. Procedural generation: still forbidden. The maps are the fixed const arrays given below. Same map every run.
+4. Map size: the 32x32, 64x64 and 40x40 arrays below replace the old environment size limits.
+5. "Qt Graphics Framework" still means the Qt Quick 3D scene graph. Do NOT use QPainter, QGraphicsView or QWidget drawing
+   for the game or the story screens. The story screen is QML (see Stage V2).
+6. Stability always wins. If a feature threatens stability or FPS, simplify it and tell me.
+
+==================================================================
+2D TILE ARRAYS IN A 3D GAME: HOW TO ADAPT THE STORY SPEC
+==================================================================
+
+The team's story spec was written like a 2D tile game (QPainter, X/Y floats). This game is a 3D Qt Quick 3D voxel game,
+so apply it like this:
+
+* Each array cell is ONE block-sized tile on the floor grid. Use the existing block size from the master prompt
+  (for example 1 tile = 1 block = 100 Qt Quick 3D units).
+* Array indexing is level[row][col]. col = world X axis, row = world Z axis (row 0 is the top/north edge, so the
+  "top-right corner" is row 0, col max). Y is the vertical axis in 3D. "Player X/Y float coordinates" in the story spec
+  means the player's X and Z position (plus the Y camera height).
+* Walls, crates, pillars and the core are stacked cubes (wall height about 3 blocks, crates 1 to 2 blocks), drawn with
+  Qt Quick 3D INSTANCING. Draw only the visible surface blocks. Floors and the ceiling are single large flat boxes
+  per level, not one model per tile.
+* Collision for player and enemies is a cheap tile lookup (is this tile solid?), plus small circle-vs-tile pushback.
+  No physics engine.
+* Line of sight and shot-vs-wall tests use a simple grid ray (DDA) in C++: step through tiles along the ray until a solid
+  tile is hit. Player shots take the nearest of (wall distance) and (enemy/vent hit distance), so walls always block shots,
+  even if the Qt Quick 3D pick function does not see instanced wall blocks.
+* Entities (enemies, pickups, Cooling Vents) are NOT stored in the tile arrays except where the spec says so. Their start
+  positions are fixed lists in the level data.
+
+TILE CODES (the team's codes plus two small additions):
+  0 = empty floor
+  1 = solid wall (outer boundary / reinforced steel / pillars)
+  2 = stacked metal shipping crate (solid obstacle)
+  3 = player spawn tile (ADDED; one per level)
+  4 = Level 1 exit tile (extraction elevator)
+  5 = ammo pickup tile
+  6 = Level 2 exit tile (descent shaft)
+  7 = heavy weapon pickup tile (ADDED; one in Level 2)
+  8 = invisible trigger tile (Level 2 crossfire trap; floor, not drawn as a block)
+  9 = VANGUARD core wall tile (Level 3, solid, armored)
+
+==================================================================
+GAMEPLAY NUMBERS (put ALL of these in GameConfig.h, one constant each, with a comment)
+==================================================================
+
+Suggested starting values (tune later):
+* Player health 100 (carries over between levels). Ammo and weapon state carry over too.
+* Sniper: body 40, head 100, bolt cooldown about 0.6 s in this story (shorter than before so Drones are fightable).
+* Heavy weapon ("Plasma Repeater" or similar name): damage 25, cooldown 0.15 s, magazine 30, no scope (right mouse = small zoom).
+* Ammo tile pickup: +5 sniper rounds and +30 heavy rounds (heavy only if the player already owns it).
+* Drone (melee chaser): health 40, speed about 3 blocks/s, melee damage 10 every 1 s when within about 1.2 blocks.
+* Sentinel (ranged): health 100, shoot interval about 2 s, damage 15 per hit on body, about 60% accuracy, range about 25 tiles.
+* Cooling Vent: health 150 each, 4 vents, not moving.
+* Level 3 Drone spawner: one Drone every 5 s from the arena perimeter.
+* MAX_ACTIVE_ENEMIES (hard cap, all types together): 10. Do not spawn above the cap; skip or delay the spawn instead.
+* Enemy pathfinding refresh: recompute BFS paths about every 0.4 s per enemy, NEVER every frame.
+
+==================================================================
+GITHUB / DOC REFERENCES (REFERENCE ONLY)
+==================================================================
+
+Use these as technical references ONLY. Do NOT copy their code or assets, do NOT copy whole repositories into this
+project, and do NOT modify them. Most are not Qt, so take the IDEA and write original Qt code. Check the license of
+anything before reusing even a small part (I have not verified licenses or whether they are still maintained).
+
+A) Qt 6 / Qt Quick 3D voxel and block rendering (closest to my project):
+* https://github.com/COSMICAL-CONTAINER/QtVoxelSandbox
+  Voxel sandbox in Qt 6 / C++ / Qt Quick 3D. Look at how blocks are rendered and textures are handled. It is a huge
+  sandbox; do NOT copy its architecture. Its README says it needs a very recent Qt 6, so only read it for ideas.
+* https://github.com/Mouad4399/Qt-Minecraft-Clone
+  Small Qt 6.7 Quick 3D Minecraft-style clone with a Main.qml + C++. A small example of the block look in Qt Quick 3D.
+* https://doc.qt.io/qt-6/qtquick3d-custominstancing-example.html
+  Official example of a C++ subclass of QQuick3DInstancing that builds an instance table from data. This is the model for
+  turning a 2D tile array into instanced wall blocks.
+* https://doc.qt.io/qt-6/qml-qtquick3d-instancing.html
+  Instancing QML type (InstanceList, per-instance color/transform). Use per-instance color for block variation.
+* https://doc.qt.io/qt-6/qml-qtquick3d-particles3d-modelparticle3d.html
+  ModelParticle3D, cube particles for sparks and debris.
+* Also keep using the references from the master prompt: qt/qtquick3d, View3D pick/rayPick, Quick3D Physics
+  CharacterController, Quick Ball example.
+
+B) Tile-map shooters and multi-level logic (logic only, not Qt):
+* https://github.com/odracir04/wolfenstein-mock
+  Multi-level Wolfenstein-style game: levels loaded from text maps, start tile, end tile that loads the next map,
+  enemy start tiles, HUD. Good model for "touch exit tile -> load next level".
+* https://github.com/Krzys-cmd/RayCaster
+  C++ raycaster with multi-level progression, spawn points, enemies with line-of-sight tracking, start / death / victory
+  screens and a HUD. Model for level flow and story/victory screens.
+* https://github.com/StefanKubsch/NARC
+  C++ raycasting engine with hitscan hit detection, large maps and enemy waypoint display. Model for hitscan ideas.
+* https://github.com/chachusaif/Raycasting-Cpp , https://github.com/JOBBIN9422/raycaster , https://github.com/aphsai/raycaster
+  Simple C++ grid raycasters. Look only at the grid-stepping (DDA) idea for line-of-sight and shot-vs-wall tests.
+
+C) Enemy AI on a tile grid:
+* https://github.com/fingernailz/Pacman
+  C++ (Qt5) Pacman with BFS / A* pathfinding on a maze grid. The closest Qt example of grid chase AI.
+* https://github.com/MournfulOx/TopDownRPG
+  C++ finite state machine (Idle, Chase, Attack, Dead) with A* on a grid. Same state model as my Drone.
+* https://www.redblobgames.com/pathfinding/a-star/
+  Clear explanation of BFS and A* on grids.
+
+==================================================================
+STAGES
+==================================================================
+
+------------------------------------------------------------------
+STAGE V0 - READ-ONLY AUDIT OF THE EXISTING PROJECT
+------------------------------------------------------------------
+Change NOTHING in this stage.
+
+* List the files in src/, qml/ and assets/ and how CMakeLists.txt collects files (explicit list or automatic glob).
+* Report: how the player is controlled, how shooting and hit detection currently work (View3D pick or rayPick?),
+  how blocks are drawn (instancing or separate models), what GameConfig.h contains, what Enemy currently does,
+  what the Door / Environment / GameWorld classes contain, what HUD properties exist.
+* Build and run the project and confirm it still works. Report FPS and any warnings.
+* List exactly which files belong to the old Desert/Forest/Snow/three-path/door intro (this is the removal list for V1)
+  and which files can be reused.
+* Check which optional Qt modules are present (Multimedia, Quick3D Physics, Particles3D).
+STOP. Send the stage report. Wait for "start Stage V1".
+
+------------------------------------------------------------------
+STAGE V1 - REMOVE THE OLD ENVIRONMENTS (CLEANUP)
+------------------------------------------------------------------
+* Delete or disable everything on the V0 removal list: Desert/Forest/Snow data, three-path logic, door-shot intro,
+  related QML, textures and particles used only by them. Update CMakeLists.txt and Main.qml so nothing references them.
+* Keep the Door class only if it can be reused later as a simple elevator/vault door animation; otherwise delete it.
+  No orphan files.
+* Leave a minimal, working placeholder: the player spawns on a plain floor with four walls (a small test room) so the
+  game still builds, runs, moves and shoots. Keep the pixel look.
+* Menus, HUD, pause, restart, health, inventory and the sniper must still work.
+Verify: clean build with no warnings about missing files, game runs, player can walk and shoot in the test room.
+STOP. Send the stage report. Wait for "start Stage V2".
+
+------------------------------------------------------------------
+STAGE V2 - STORY STATE AND LEVEL FLOW
+------------------------------------------------------------------
+Create/update: src/GameManager.* (new state), src/LevelManager.h/.cpp, qml/StoryScreen.qml,
+src/LevelData.h/.cpp (tile codes enum + one tiny 16x16 test array for now + story texts).
+
+* GameManager: add state STORY_TEXT (name it in the project's existing style, for example GameState::StoryText).
+  While in this state the game loop is paused (no movement, no enemy updates, no timers).
+* StoryScreen.qml: black background, pixel font, short mission text, a "PRESS ENTER / CLICK TO CONTINUE" line. It is shown
+  BEFORE each level and after the final win. Do NOT use QPainter or drawText; this is QML.
+* LevelManager (C++, exposed to QML): int currentLevel (starts at 1), loadLevel(n), the active tile array, spawn position,
+  exit check, and a method that is called every frame to see if the player stands on an exit tile (4 on level 1,
+  6 on level 2).
+* Level flow (from the team spec): when the player intersects an exit tile -> increment currentLevel -> show the story
+  screen for the next level -> swap the active level array -> move the player's X/Z to that level's spawn -> KEEP the player's
+  current health, ammo, reserve ammo, weapons owned and inventory counts.
+* Restart / Main Menu: reset to Level 1 with full default stats.
+* All story texts live in ONE place (LevelData) so they are easy to edit. Draft texts (edit freely):
+    INTRO (before Level 1): "You are the last systems engineer in Foundry Seven. VANGUARD has seized every robot in the
+      building. Reach the extraction elevator."
+    LEVEL 2: "The Armory. VANGUARD sealed the vaults. Grab what you can and reach the descent shaft. Stay out of crossfire."
+    LEVEL 3: "The Logic Core. Destroy the four cooling vents to overload VANGUARD. It will keep sending drones."
+    WIN: "VANGUARD DESTROYED. The foundry is silent."
+* Test with the 16x16 test array: touching a test exit tile moves to a second tiny test array via the story screen.
+Verify: story screen shows and pauses the game, ENTER continues, level swap works, health/ammo persist, restart resets.
+STOP. Send the stage report. Wait for "start Stage V3".
+
+------------------------------------------------------------------
+STAGE V3 - TILE-TO-BLOCK RENDERER AND TILE COLLISION
+------------------------------------------------------------------
+Create/update: src/TileMapInstancing.h/.cpp (a QQuick3DInstancing subclass, see the Qt custom instancing example),
+qml/LevelView.qml (or reuse qml/VoxelBlocks.qml), src/CollisionSystem.* (tile lookup, DDA grid ray).
+
+* Turn the active level array into 3D: instanced wall blocks (tile 1), instanced crate blocks (tile 2), exit and pickup
+  markers as small glowing/pixel blocks, core blocks (tile 9). Floor and ceiling are single large boxes. Surface blocks only.
+* Pixel style: small 16x16 Nearest-filtered textures (steel wall, crate, floor plate, exit elevator, ammo box), no shiny materials.
+* Tile collision for the player (and later for enemies).
+* DDA grid ray for line of sight and shot-vs-wall tests; make player shots stop at walls.
+* Add a simple debug option in GameConfig to log tile counts and block counts per level.
+Verify: the test arrays appear as walls/crates, the player cannot walk through them, shots stop at walls, FPS is stable.
+STOP. Send the stage report. Wait for "start Stage V4".
+
+------------------------------------------------------------------
+STAGE V4 - ENEMY TYPES: DRONE AND SENTINEL
+------------------------------------------------------------------
+Update: src/Enemy.h/.cpp (add an enemy type), add src/EnemyManager.h/.cpp (pool, spawn, cap, update loop),
+qml/EnemyModel.qml (block-built models for each type).
+
+* DRONE (melee chaser): states IDLE -> CHASE -> ATTACK -> DEAD. Chase uses BFS on the tile grid toward the player,
+  recomputed about every 0.4 s, moving in a straight line between path tiles. Melee damage when close. Boxy block model.
+* SENTINEL (ranged): states GUARD -> DETECT -> AIM -> SHOOT -> SEARCH -> DEAD. Detection by distance + grid line of sight.
+  Short aim delay, shoot cooldown, accuracy percentage, visible bullet tracer, damages the player. When line of sight is
+  lost, move to the last seen position (BFS) and search briefly, then return to GUARD. No cover logic.
+* Both use HealthSystem. A red enemy health bar shows when an enemy is detected or hit.
+* Score per kill (Drone small, Sentinel larger).
+* EnemyManager enforces MAX_ACTIVE_ENEMIES, reuses enemy objects (object pooling), and stops all updates when the game is
+  paused or in STORY_TEXT.
+* Enemies cannot walk through walls or crates.
+Verify in the test map: one Drone chases around walls and hurts the player, one Sentinel shoots with line of sight,
+both die from the sniper, the cap works, FPS is stable.
+STOP. Send the stage report. Wait for "start Stage V5".
+
+------------------------------------------------------------------
+STAGE V5 - LEVEL 1: FABRICATION FLOORS
+------------------------------------------------------------------
+Update: src/LevelData.* (add level1), spawn/pickup/enemy lists, story text; connect to LevelManager.
+
+* Define exactly: const int level1[32][32]
+* Layout: a tight, claustrophobic maze. 1 = solid outer boundary walls. 2 = inner obstacles, stacked metal shipping crates.
+  Corridors about 2 tiles wide (narrow but fightable). Player spawn tile 3 at the bottom-left area.
+* Combat flow: basic Drone entities (melee chasers) placed in the narrow corridors, in small groups, not all at once.
+* Design a 10x10 open "Loading Bay" near the end of the maze (for example around rows 6 to 15, cols 17 to 26),
+  with a few crates for cover. This is the primary combat encounter (more Drones, respect MAX_ACTIVE_ENEMIES by
+  releasing them in waves).
+* Exit trigger: a 3x3 block of tile 4 in the TOP-RIGHT corner (inside the outer wall) representing the extraction elevator.
+  Touching it triggers the Level 2 story screen and load.
+* Place a few fixed Food Pack / Bandage / Medkit pickups and a few ammo tiles (5) along the way.
+* At load time, run a BFS check from spawn to exit and log a warning if the exit is not reachable.
+Verify: the whole level is playable from spawn to exit, Drones behave, the Loading Bay fight works, FPS is stable,
+the exit loads the Level 2 story screen (Level 2 may still be the test map).
+STOP. Send the stage report. Wait for "start Stage V6".
+
+------------------------------------------------------------------
+STAGE V6 - LEVEL 2: THE ARMORY (AND THE HEAVY WEAPON)
+------------------------------------------------------------------
+Create/update: src/LevelData.* (add level2), src/HeavyWeapon.h/.cpp (derived from Weapon), weapon switching in Player/Weapon,
+HUD weapon indicator, trigger system in LevelManager or EnemyManager.
+
+* Define exactly: const int level2[64][64]
+* Layout: drastically more open. Long straight hallways (length 40+ tiles, width about 3) and massive security vaults
+  (about 12x12 rooms with crates/pillars as cover) to test ranged combat. 1 = reinforced steel walls.
+* THE CACHE: immediately adjacent to the Level 2 spawn, a small secure room heavily populated with ammo pickup tiles (5)
+  and ONE heavy weapon pickup tile (7). Walking onto 7 gives the player the heavy weapon.
+* HeavyWeapon: second weapon (Plasma Repeater or similar), values from GameConfig, block-built weapon model, switch with
+  Q and mouse wheel, HUD shows the current weapon, magazine and reserve ammo of each.
+* COMBAT: ranged Sentinel entities at the far ends of the long hallways.
+* TRAPS: invisible trigger tiles (8) across the middle of the hallways. The first time the player steps on one, it fires ONCE
+  and spawns enemies BEHIND the player (on free floor tiles about 8 to 12 tiles back, away from where the player is
+  facing), forcing a crossfire. Respect MAX_ACTIVE_ENEMIES. Triggers are not drawn.
+* EXIT: tile 6 (descent shaft, 3x3) at the far end of the map. Touching it triggers the Level 3 story screen and load.
+* A few fixed Food / Bandage / Medkit pickups in the vaults.
+* BFS reachability check from spawn to exit at load.
+Verify: cache gives ammo + heavy weapon, weapon switching works, Sentinels shoot from the far ends, triggers spawn enemies
+behind the player once, exit loads Level 3, FPS is stable on the 64x64 map.
+STOP. Send the stage report. Wait for "start Stage V7".
+
+------------------------------------------------------------------
+STAGE V7 - LEVEL 3: THE LOGIC CORE (BOSS ARENA)
+------------------------------------------------------------------
+Create/update: src/LevelData.* (add level3), src/CoolingVent.h/.cpp (or a vent type of Enemy), boss logic in LevelManager
+or a small src/BossArena.h/.cpp, qml/VentModel.qml, update qml/GameOver.qml for the VANGUARD win text.
+
+* Define exactly: const int level3[40][40]
+* Layout: a wide-open, symmetrical square gladiator arena. Floor empty (0), outer wall 1. Four solid 2x2 pillars near the
+  corners (for example rows 5-6 / 33-34 and cols 5-6 / 33-34) for line-of-sight cover. Player spawn tile 3 on the
+  south middle edge.
+* BOSS (The Mainframe): NOT a moving enemy. The exact center is a 4x4 block of armored solid tiles (9), for example rows 18-21
+  and cols 18-21. It is the VANGUARD core: tall, glowing, pixel-style, with a visible red/orange glow while alive.
+* Four targetable COOLING VENT entities at the four corners of the central structure (for example the grid cells just
+  outside each corner: (17,17), (17,22), (22,17), (22,22)), shown as block-built vents with a glow. Each has health
+  (from GameConfig), takes damage from the player's shots (hitscan test against the vent's bounds, walls and pillars block shots),
+  and plays a hit effect and a destruction effect.
+* SPAWNER: a timer spawns a standard Drone from the arena perimeter every 5 seconds (random choice among FIXED perimeter
+  spawn points), respecting MAX_ACTIVE_ENEMIES. Drones chase with the same BFS.
+* WIN CONDITION: every update, count the active (alive) vents. When all four are destroyed:
+    1. stop the Drone spawner timer,
+    2. halt all enemy movement/pathfinding/shooting and remove or freeze the remaining enemies,
+    3. change the central core tiles (9) to an inert dark gray color and remove their glow,
+    4. show the final "VANGUARD DESTROYED" overlay (QML), with final score, Restart and Main Menu buttons
+       (reuse GameOver.qml with the win flag), after the WIN story text.
+* HUD addition: "VENTS: n/4" counter.
+* A few fixed Food / Bandage / Medkit and ammo pickups at the arena edges (a few extra, since this is a long fight).
+Verify: the arena renders, pillars block shots, vents take damage and die, Drones spawn every 5 s up to the cap, win
+sequence fires exactly when the 4th vent dies, restart works.
+STOP. Send the stage report. Wait for "start Stage V8".
+
+------------------------------------------------------------------
+STAGE V8 - HUD, ANIMATIONS, EFFECTS AND AUDIO
+------------------------------------------------------------------
+Create/update: HUD.qml, src/AnimationManager.*, src/AudioManager.*, assets/sounds, assets/textures (as needed).
+
+* HUD: level name ("FABRICATION FLOORS", "THE ARMORY", "THE LOGIC CORE"), objective text per level, weapon indicator,
+  ammo (magazine / reserve), health bar (orange), enemy health bar (red), Food / Bandage / Medkit counts, FPS counter,
+  vents counter on Level 3. Pixel font, hard-edged bars.
+* Animations and effects (simple, pooled): gun recoil, reload, muzzle flash, bullet tracers, hit sparks (block debris),
+  enemy death (fall/shrink), pickup bob and collect, damage flash, healing effect, vent destruction burst, exit elevator glow.
+* Audio (all optional, tiny files, record source/license in assets/CREDITS.txt): gunshot (sniper and heavy), reload,
+  enemy hit, enemy death, pickup, vent explosion, level-complete jingle, one ambient loop per level (factory hum, armory hum,
+  low core hum with an alarm).
+* Keep all new effects behind the quality settings in GameConfig.
+Verify: every HUD value updates correctly, effects play without FPS drops, audio works, nothing leaks memory over a few minutes.
+STOP. Send the stage report. Wait for "start Stage V9".
+
+------------------------------------------------------------------
+STAGE V9 - GRAPHICS PASS (PIXEL STYLE KEPT)
+------------------------------------------------------------------
+* Per-level mood and lighting using Qt Quick 3D lights (and ExtendedSceneEnvironment if available, otherwise SceneEnvironment):
+  Level 1 dim industrial with flickering lamps, Level 2 cold steel/blue, Level 3 dark with red/orange core glow and subtle alarm pulse.
+* Fog/haze to hide distance, ceiling lamps as small glowing blocks, texture variants (2 to 3 per main block type) and
+  small per-instance color variation so large walls do not look flat.
+* Optional post effects as separate on/off switches in GameConfig (tonemapping, subtle glow, vignette, light ambient
+  occlusion), and optional soft shadows. Keep them subtle.
+* Quality presets LOW / MEDIUM / HIGH in GameConfig (default MEDIUM): LOW = no shadows/post effects, fewer effects;
+  MEDIUM = light effects; HIGH = shadows + subtle post effects.
+* Keep anti-aliasing off, Nearest texture filtering, no shiny or realistic materials. Optional low-resolution pixelated
+  screen mode stays optional.
+* FPS target: stable 60 FPS on MEDIUM on an average laptop, at least 30 FPS on LOW, on all three levels (Level 2 is the biggest).
+* Drop order if performance suffers: ambient occlusion, shadows, glow, extra particles, vignette, shorter fog distance, fewer decorations.
+Verify: all three levels in all three presets, FPS counter, no new warnings.
+STOP. Send the stage report. Wait for "start Stage V10".
+
+------------------------------------------------------------------
+STAGE V10 - FINAL INTEGRATION AND TESTING
+------------------------------------------------------------------
+Test the full flow, fixing problems one at a time:
+
+MAIN MENU -> START GAME -> INTRO STORY SCREEN -> LEVEL 1 (maze, Drones, Loading Bay) -> EXIT ELEVATOR -> LEVEL 2 STORY
+SCREEN -> LEVEL 2 (cache, heavy weapon, Sentinels, trigger crossfire) -> DESCENT SHAFT -> LEVEL 3 STORY SCREEN ->
+LEVEL 3 (pillars, Drones every 5 s, four vents) -> VANGUARD DESTROYED -> RESTART or MAIN MENU.
+Also test: player death -> GAME OVER -> Restart / Main Menu; Pause -> Resume / Restart / Main Menu; health and ammo carry
+over between levels; weapon switching; using Food / Bandage / Medkit; story screens pause the game; enemy cap holds; no
+crash after restarting several times; no memory growth during a 10-minute session; no leftover Desert/Forest/Snow code.
+STOP. Send the stage report (with a pass/fail table of every item above). Wait for "start Stage V11".
+
+------------------------------------------------------------------
+STAGE V11 - FINAL DELIVERABLES
+------------------------------------------------------------------
+Provide (as files in a docs/ folder and inside README.md):
+1. Final folder structure.
+2. Explanation of every file (what it does, why it exists, which files it talks to).
+3. Game flow and the Project VANGUARD story flow (flowchart in Mermaid or ASCII).
+4. UML class diagram (Mermaid or PlantUML text): GameManager, Player, Weapon, Sniper, HeavyWeapon, Enemy (Drone/Sentinel),
+   EnemyManager, CoolingVent, LevelManager, LevelData, TileMapInstancing, CollisionSystem, HealthSystem, Inventory, Pickup,
+   AnimationManager, AudioManager.
+5. UI wireframes (text sketches): Main Menu, Instructions, Story screen, HUD, Pause, Game Over / Win.
+6. Short explanations: tile arrays and tile codes, how the 2D arrays become 3D blocks, player movement and camera,
+   shooting and the grid ray, Drone and Sentinel AI, BFS pathfinding, trigger tiles, boss/vent logic, health, score, game state.
+7. README.md for a college project and a "How to run in Qt Creator" guide.
+8. Viva questions with simple answers based ONLY on what was implemented.
+9. Final statement: Qt version, Qt modules, CMake version/features, which files hold game logic, UI, player logic,
+   enemy logic, weapon logic, level data, and which optional features were skipped.
+10. List of future improvements, clearly marked as NOT implemented.
+STOP. Send the stage report. The project is complete after I confirm.
+
+==================================================================
+APPENDIX - THE TEAM'S ORIGINAL STORY / LEVEL SPEC (VERBATIM, FOR INTENT)
+==================================================================
+The spec below was written like a 2D tile game. Follow the ADAPTED version above for implementation (3D blocks, QML story
+screens, X/Z coordinates). Use the text below to understand the intent, the tile codes and the level designs.
+
+## Narrative & State Management (Project VANGUARD)
+
+* **Story Integration:** The game follows a systems engineer trapped in a classified robotics foundry shutting down a rogue military AI named VANGUARD. Implement a screen-drawing state (e.g., `GameState::STORY_TEXT`) that pauses the active game loop. Use `QPainter::drawText` to display a brief mission objective on a black background before loading each level.
+* **Level Flow:** Maintain a `currentLevel` integer. When the player intersects an exit tile, increment this integer, swap the active 2D array pointer, reset the player's X/Y float coordinates to the new map's spawn point, and persist their current health and ammo pool variables.
+
+## Level 1 Architecture: Fabrication Floors
+
+* **Map Data Structure:** Define a `const int level1[32][32]` array.
+* **Geometry Layout:** Design the grid as a tight, claustrophobic maze. Use integer `1` for solid outer boundary walls and integer `2` for inner obstacles representing stacked metal shipping crates.
+* **Combat Flow:** Place basic Drone entities (melee chasers) in the narrow corridors. Design a 10x10 open "Loading Bay" area near the end of the maze for the primary combat encounter.
+* **Exit Trigger:** Place a 3x3 block of integer `4` tiles in the top-right corner to represent the extraction elevator. Intersecting this tile triggers the load state for Level 2.
+
+## Level 2 Architecture: The Armory
+
+* **Map Data Structure:** Define a `const int level2[64][64]` array.
+* **Geometry Layout:** Drastically open up the grid to feature long, straight hallways and massive security vaults to test ranged combat. Use integer `1` for reinforced steel walls.
+* **The Cache:** Immediately adjacent to the Level 2 spawn coordinates, create a secure room heavily populated with ammo pickup tiles (integer `5`) and a unique heavy weapon pickup tile.
+* **Combat Flow:** Place ranged Sentinel entities at the far ends of the long hallways. Design invisible trigger tiles (integer `8`) across the middle of the hallways; crossing them should spawn enemies behind the player to force a crossfire scenario.
+* **Exit Trigger:** Place integer `6` tiles at the far end of the map to act as the descent shaft to the final core.
+
+## Level 3 Architecture: The Logic Core (Boss Arena)
+
+* **Map Data Structure:** Define a `const int level3[40][40]` array.
+* **Geometry Layout:** Design a wide-open, symmetrical square gladiator arena. Keep the floor empty (`0`), but place four 2x2 solid pillars near the corners to provide line-of-sight cover for the player.
+* **Boss Entity (The Mainframe):** The boss is not a moving sprite. Make the exact center of the grid a 4x4 block of solid, heavily armored wall tiles (integer `9`) representing the VANGUARD core. Place four targetable "Cooling Vent" sprite entities at the corners of this central wall structure.
+* **Win Condition:** Track the active count of the Cooling Vent entities in the update loop. Furthermore, implement a timer that spawns standard Drones from the arena perimeter every 5 seconds. When all four vents are destroyed by the player's raycast weapon, halt all enemy pathfinding, change the central wall tiles to an inert color, and trigger the final "VANGUARD DESTROYED" UI overlay.
+
+==================================================================
+FINAL REMINDER
+==================================================================
+Pixel-wise, Minecraft-style, blocky and stable. STOP AFTER EVERY STAGE and wait for my "start Stage Vn".

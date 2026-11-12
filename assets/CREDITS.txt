@@ -1,0 +1,52 @@
+================================================================================
+FPSLabGame - Project VANGUARD Asset Credits & Licenses
+================================================================================
+
+All assets in this project are self-generated and distributed under the
+permissive MIT License / Creative Commons Zero (CC0) Public Domain dedication.
+There are no copyrighted commercial game assets or third-party asset packs.
+
+--------------------------------------------------------------------------------
+1. TEXTURES (assets/textures/)
+--------------------------------------------------------------------------------
+All 16x16 pixel-art textures are procedurally crafted for this project:
+
+- stone.png       : 16x16 Industrial masonry / wall block
+- door.png        : 16x16 Reinforced security door plate
+
+Author: FPSLabGame Project
+License: CC0 1.0 Universal (Public Domain Dedication)
+
+--------------------------------------------------------------------------------
+2. SOUND EFFECTS & AMBIENCE (assets/sounds/)
+--------------------------------------------------------------------------------
+All audio files are procedurally synthesized 16-bit 44.1 kHz PCM WAV files:
+
+- gunshot.wav          : Bolt-action rifle muzzle blast (noise + resonant thump)
+- plasma_shot.wav      : Rapid high-energy plasma repeater discharge (950Hz to 260Hz sweep)
+- reload.wav           : Dual-click mechanical bolt slide
+- door.wav             : Low-frequency grinding slide (rumble + friction)
+- enemy_hit.wav        : Blunt impact audio thud
+- death.wav            : Descending retro elimination tone
+- pickup.wav           : Ascending two-tone acquisition chime (C5 -> G5)
+- vent_explode.wav     : Heavy explosive detonation and resonant metal shatter
+- level_clear.wav      : 4-note ascending triumphant fanfare (A4, C#5, E5, A5)
+- factory_hum.wav      : Level 1 ambient drone (55Hz industrial transformer rumble)
+- armory_hum.wav       : Level 2 ambient drone (65Hz cold airflow and metallic hum)
+- core_hum.wav         : Level 3 ambient drone (40Hz sub-bass core reactor with cyclic alarm pulse)
+
+Author: FPSLabGame Project
+License: CC0 1.0 Universal (Public Domain Dedication)
+
+--------------------------------------------------------------------------------
+3. 3D GEOMETRY & MODELS (assets/models/)
+--------------------------------------------------------------------------------
+- Built-in Qt Quick 3D primitive "#Cube" mesh rendered dynamically via QML Model.
+- Zero external mesh dependencies.
+- No commercial models or meshes used.
+
+--------------------------------------------------------------------------------
+4. TYPOGRAPHY & HUD
+--------------------------------------------------------------------------------
+- Crisp pixel typography rendered with hard pixel-art borders.
+================================================================================

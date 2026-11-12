@@ -1,0 +1,17 @@
+CompileFlags:
+  CompilationDatabase: "."
+  Compiler: "C:/Qt/Tools/mingw1310_64/bin/g++.exe"
+  Add:
+    - "--target=x86_64-w64-mingw32"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/backward"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include"
+    - "-isystem"
+    - "C:/Qt/Tools/mingw1310_64/include"
