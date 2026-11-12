@@ -132,6 +132,12 @@ void GameManager::triggerWin()
     emit gameWon();
 }
 
+void GameManager::restartCurrentLevel()
+{
+    setGameState(GameState::Playing);
+    emit levelRestarted();
+}
+
 void GameManager::restartGame()
 {
     resetScore();

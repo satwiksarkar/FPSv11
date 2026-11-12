@@ -71,6 +71,13 @@ Item {
     // Contextual Door Interaction Prompt (continuously updated when targeting a door)
     property string interactionPrompt: ""
 
+    // Four-Key Mission & Extraction Progress (Day 2)
+    property int collectedKeysCount: 0
+    property int totalKeysRequired: 4
+    property int collectedKeysMask: 0
+    property bool bossCompleted: false
+    property bool extractionAvailable: false
+
     // ==================== FULLSCREEN DAMAGE & HEAL FLASHES ====================
     Rectangle {
         id: damageOverlay
@@ -320,6 +327,134 @@ Item {
                         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                     }
                 }
+            }
+        }
+    }
+
+    // ==================== TOP-LEFT: ACCESS KEYS MISSION PROGRESS (DAY 2) ====================
+    Rectangle {
+        id: accessKeysCard
+        anchors.top: healthCard.bottom
+        anchors.left: healthCard.left
+        anchors.topMargin: 8
+        width: 240
+        height: 46
+        color: "#d9101216"
+        border.color: (root.collectedKeysCount >= root.totalKeysRequired) ? "#2ecc71" : "#343840"
+        border.width: 2
+        radius: 0
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 6
+            spacing: 4
+
+            Row {
+                width: parent.width
+
+                Text {
+                    text: "ACCESS KEYS"
+                    color: "#95a5a6"
+                    font.pixelSize: 10
+                    font.bold: true
+                }
+
+                Item { width: accessKeysCard.width - 132; height: 1 }
+
+                Text {
+                    text: root.collectedKeysCount + "/" + root.totalKeysRequired
+                    color: (root.collectedKeysCount >= root.totalKeysRequired) ? "#2ecc71" : "#00e5ff"
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+            }
+
+            Row {
+                spacing: 6
+
+                Repeater {
+                    model: 4
+
+                    Rectangle {
+                        readonly property bool keyHeld: (root.collectedKeysMask & (1 << index)) !== 0
+                        readonly property color keyAccent: {
+                            switch (index) {
+                            case 0: return "#00e5ff"
+                            case 1: return "#2ecc71"
+                            case 2: return "#f1c40f"
+                            default: return "#e056fd"
+                            }
+                        }
+
+                        width: 52
+                        height: 16
+                        color: keyHeld ? "#1b2832" : "#181b21"
+                        border.color: keyHeld ? keyAccent : "#343840"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: keyHeld ? ("KEY " + (index + 1)) : ("K" + (index + 1))
+                            color: keyHeld ? parent.keyAccent : "#636e72"
+                            font.pixelSize: 9
+                            font.bold: true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ==================== LEVEL 3: EXTRACTION CHECKLIST ====================
+    Rectangle {
+        id: extractionChecklistCard
+        anchors.top: accessKeysCard.bottom
+        anchors.left: healthCard.left
+        anchors.topMargin: 8
+        width: 240
+        height: 82
+        visible: root.isLevel3
+        color: "#d9101216"
+        border.color: root.extractionAvailable ? "#2ecc71" : "#343840"
+        border.width: 1
+        radius: 0
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 7
+            spacing: 3
+
+            Text {
+                text: "EXTRACTION PROTOCOL"
+                color: root.extractionAvailable ? "#2ecc71" : "#00e5ff"
+                font.pixelSize: 10
+                font.bold: true
+                font.letterSpacing: 1
+            }
+
+            Text {
+                readonly property bool done: root.collectedKeysCount >= root.totalKeysRequired
+                text: "KEYS: " + root.collectedKeysCount + "/" + root.totalKeysRequired
+                color: done ? "#2ecc71" : "#ecf0f1"
+                font.pixelSize: 10
+                font.bold: true
+            }
+
+            Text {
+                readonly property int destroyedVents: root.totalVents - root.activeVents
+                readonly property bool done: root.activeVents === 0
+                text: "COOLING VENTS: " + destroyedVents + "/" + root.totalVents
+                color: done ? "#2ecc71" : "#ecf0f1"
+                font.pixelSize: 10
+                font.bold: true
+            }
+
+            Text {
+                text: "CORE: " + (root.bossCompleted ? "OVERLOADED" : "ACTIVE")
+                      + "  |  EXIT: " + (root.extractionAvailable ? "AVAILABLE" : "LOCKED")
+                color: root.extractionAvailable ? "#2ecc71" : "#f39c12"
+                font.pixelSize: 9
+                font.bold: true
             }
         }
     }
@@ -836,6 +971,8 @@ Item {
                 return "#e74c3c"
             if (root.interactionPrompt.indexOf("OBSTRUCTED") !== -1)
                 return "#e67e22"
+            if (root.interactionPrompt.indexOf("EXTRACTION AVAILABLE") !== -1)
+                return "#2ecc71"
             return "#00e5ff"
         }
         radius: 0
@@ -849,6 +986,8 @@ Item {
                     return "#ff7675"
                 if (root.interactionPrompt.indexOf("OBSTRUCTED") !== -1)
                     return "#f39c12"
+                if (root.interactionPrompt.indexOf("EXTRACTION AVAILABLE") !== -1)
+                    return "#2ecc71"
                 return "#ffffff"
             }
             font.pixelSize: 12

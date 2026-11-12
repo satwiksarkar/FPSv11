@@ -70,6 +70,7 @@ public:
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void triggerGameOver();
     Q_INVOKABLE void triggerWin();
+    Q_INVOKABLE void restartCurrentLevel();
     Q_INVOKABLE void restartGame();
     Q_INVOKABLE void returnToMainMenu();
     Q_INVOKABLE void addScore(int points);
@@ -89,6 +90,7 @@ signals:
     void gameOver();
     void gameWon();
     void gameRestarted();
+    void levelRestarted();
 
 private:
     void setGameState(GameState newState);

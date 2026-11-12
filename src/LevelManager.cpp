@@ -1,4 +1,5 @@
 #include "LevelManager.h"
+#include "BossArena.h"
 #include "GameConfig.h"
 #include "CollisionSystem.h"
 #include "EnemyManager.h"
@@ -13,8 +14,12 @@ LevelManager::LevelManager(QObject *parent)
     , m_currentLevel(1)
     , m_maxLevels(3)
     , m_exitTriggered(false)
+    , m_exitDenyNotified(false)
     , m_loadingBayTriggered(false)
     , m_heavyWeaponCollected(false)
+    , m_keyMasks{0, 0, 0, 0}
+    , m_bossCompleted(false)
+    , m_activeVentsRemaining(4)
 {
     qDebug() << "[LevelManager] Initialized on Level" << m_currentLevel << ":" << currentLevelName();
 }
@@ -74,9 +79,10 @@ bool LevelManager::isLoadingBayTriggered() const
     return m_loadingBayTriggered;
 }
 
-void LevelManager::loadLevel(int levelIndex)
+void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
 {
     m_exitTriggered = false;
+    m_exitDenyNotified = false;
     m_loadingBayTriggered = false;
     m_consumedAmmoTiles.clear();
     m_triggeredTraps.clear();
@@ -88,17 +94,33 @@ void LevelManager::loadLevel(int levelIndex)
 
     if (levelIndex > m_maxLevels) {
         clearDoors();
+        clearKeys();
         qDebug() << "[LevelManager] All campaign levels completed! Triggering campaign victory.";
         m_currentLevel = m_maxLevels + 1;
         emit currentLevelChanged(m_currentLevel);
         emit storyChanged();
+        emit missionProgressChanged();
         emit campaignWon();
         return;
     }
 
     m_currentLevel = qBound(1, levelIndex, m_maxLevels);
+    if (resetLevelKeys) {
+        m_keyMasks[m_currentLevel] = 0;
+    }
+
+    if (m_currentLevel == 3) {
+        m_bossCompleted = m_bossArena ? m_bossArena->isBossDefeated() : false;
+        m_activeVentsRemaining = m_bossArena ? m_bossArena->activeVentsCount() : 4;
+    } else {
+        m_bossCompleted = false;
+        m_activeVentsRemaining = 0;
+    }
+
     rebuildDoorsForLevel(m_currentLevel);
-    qDebug() << "[LevelManager] Loaded Level" << m_currentLevel << ":" << currentLevelName();
+    rebuildKeysForLevel(m_currentLevel);
+    qDebug() << "[LevelManager] Loaded Level" << m_currentLevel << ":" << currentLevelName()
+             << "| Access Keys:" << collectedKeysCount() << "/" << totalKeysRequired();
 
     // ==================== BFS REACHABILITY CHECK AT LOAD TIME ====================
     QString reachabilityLog;
@@ -109,6 +131,8 @@ void LevelManager::loadLevel(int levelIndex)
         qDebug() << "[LevelManager] Reachability verified:" << reachabilityLog;
     }
 
+    emit missionKeysChanged(m_currentLevel, collectedKeysCount(), collectedKeysMask());
+    emit missionProgressChanged();
     emit currentLevelChanged(m_currentLevel);
     emit storyChanged();
     emit levelLoaded(m_currentLevel);
@@ -163,9 +187,9 @@ bool LevelManager::isSolidTile(int row, int col) const
     return false;
 }
 
-bool LevelManager::checkExitReached(const QVector3D &playerPos)
+bool LevelManager::checkExitReached(const QVector3D &playerPos, bool playerAlive)
 {
-    if (m_exitTriggered) {
+    if (m_exitTriggered || !playerAlive) {
         return false;
     }
 
@@ -175,14 +199,29 @@ bool LevelManager::checkExitReached(const QVector3D &playerPos)
     }
 
     int tileAtPlayer = getTileAtWorldPos(playerPos.x(), playerPos.z());
-    if (tileAtPlayer == exitTileCode) {
-        m_exitTriggered = true;
-        qDebug() << "[LevelManager] Player entered exit tile" << exitTileCode << "at" << playerPos;
-        emit exitReached(m_currentLevel + 1);
-        return true;
+    if (tileAtPlayer != exitTileCode) {
+        m_exitDenyNotified = false;
+        return false;
     }
 
-    return false;
+    // Defensive extraction gate: never permit level transition or victory if Day 2 requirements are incomplete
+    if (!isExtractionAvailable()) {
+        if (!m_exitDenyNotified) {
+            m_exitDenyNotified = true;
+            QString msg = (m_currentLevel == 3)
+                ? QStringLiteral("[LOCKED] NEED 4 KEYS (%1/4) & OVERLOAD CORE (%2 VENTS LEFT)")
+                      .arg(collectedKeysCount())
+                      .arg(m_activeVentsRemaining)
+                : QStringLiteral("[LOCKED] NEED ALL 4 ACCESS KEYS (%1/4)").arg(collectedKeysCount());
+            emit doorInteractionFeedback(msg, QStringLiteral("#e74c3c"));
+        }
+        return false;
+    }
+
+    m_exitTriggered = true;
+    qDebug() << "[LevelManager] Player entered exit tile" << exitTileCode << "at" << playerPos;
+    emit exitReached(m_currentLevel + 1);
+    return true;
 }
 
 bool LevelManager::consumeAmmoTile(float x, float z)
@@ -764,6 +803,83 @@ Door* LevelManager::findTargetDoor(const QVector3D &cameraPos,
     return bestDoor;
 }
 
+bool LevelManager::evaluateDoorAccess(const Door *door, QString &outDenyReason) const
+{
+    outDenyReason.clear();
+    if (!door) {
+        return false;
+    }
+
+    const int count = collectedKeysCount();
+    const int mask = collectedKeysMask();
+
+    switch (door->doorType()) {
+    case Door::DoorType::Standard:
+        return true;
+
+    case Door::DoorType::KeyLocked: {
+        const int reqIdx = door->requiredKeyIndex();
+        const int reqMask = door->requiredKeyMask();
+        const int reqCount = door->requiredKeyCount();
+
+        if (reqIdx >= 0 && reqIdx < 4 && !hasKey(reqIdx)) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED ACCESS KEY %1 (%2/4)").arg(reqIdx + 1).arg(count);
+            return false;
+        }
+        if (reqMask != 0 && (mask & reqMask) != reqMask) {
+            outDenyReason = QStringLiteral("[LOCKED] MISSING REQUIRED ACCESS KEY (%1/4)").arg(count);
+            return false;
+        }
+        if (reqCount > 0 && count < reqCount) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED %1 ACCESS KEYS (%2/%1)").arg(reqCount).arg(count);
+            return false;
+        }
+        return true;
+    }
+
+    case Door::DoorType::AreaLocked: {
+        const int reqMask = door->requiredKeyMask();
+        const int reqCount = (door->requiredKeyCount() > 0) ? door->requiredKeyCount() : ((reqMask != 0) ? popcount4(reqMask) : 4);
+        if (reqMask != 0 && (mask & reqMask) != reqMask) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED %1 ACCESS KEYS (%2/%1)").arg(reqCount).arg(count);
+            return false;
+        }
+        if (count < reqCount) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED %1 ACCESS KEYS (%2/%1)").arg(reqCount).arg(count);
+            return false;
+        }
+        return true;
+    }
+
+    case Door::DoorType::MainExit: {
+        const int reqKeys = (door->requiredKeyCount() > 0) ? door->requiredKeyCount() : 4;
+        const int reqMask = door->requiredKeyMask();
+        const bool keysSatisfied = (count >= reqKeys) && (reqMask == 0 || (mask & reqMask) == reqMask);
+        const bool bossRequired = door->requiresBossDefeated() || (m_currentLevel == 3);
+        const bool bossSatisfied = !bossRequired || (m_bossCompleted && m_activeVentsRemaining == 0);
+
+        if (!keysSatisfied && !bossSatisfied) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED %1 ACCESS KEYS (%2/%1) & DESTROY VENTS (%3/4 REMAINING)")
+                                .arg(reqKeys)
+                                .arg(count)
+                                .arg(m_activeVentsRemaining);
+            return false;
+        }
+        if (!keysSatisfied) {
+            outDenyReason = QStringLiteral("[LOCKED] NEED %1 ACCESS KEYS (%2/%1)").arg(reqKeys).arg(count);
+            return false;
+        }
+        if (!bossSatisfied) {
+            outDenyReason = QStringLiteral("[LOCKED] DESTROY COOLING VENTS (%1/4 REMAINING)").arg(m_activeVentsRemaining);
+            return false;
+        }
+        return true;
+    }
+    }
+
+    return false;
+}
+
 QString LevelManager::buildDoorPrompt(const Door *door,
                                       const QVector3D &playerPos,
                                       EnemyManager *enemyManager) const
@@ -773,8 +889,18 @@ QString LevelManager::buildDoorPrompt(const Door *door,
     }
 
     switch (door->doorState()) {
-    case Door::DoorState::Locked:
-        return door->lockedReason();
+    case Door::DoorState::Locked: {
+        QString denyReason;
+        if (!evaluateDoorAccess(door, denyReason)) {
+            return denyReason;
+        }
+        if (door->doorType() == Door::DoorType::MainExit) {
+            return (door->requiresBossDefeated() || m_currentLevel == 3)
+                ? QStringLiteral("EXTRACTION AVAILABLE — PRESS E")
+                : QStringLiteral("[E] UNLOCK EXIT DOOR");
+        }
+        return QStringLiteral("[E] UNLOCK DOOR");
+    }
     case Door::DoorState::Closed:
         return (door->doorType() == Door::DoorType::MainExit)
             ? QStringLiteral("[E] OPEN EXIT DOOR")
@@ -804,7 +930,8 @@ void LevelManager::updateDoors(float deltaTime,
                                const QVector3D &cameraPos,
                                const QVector3D &lookDir,
                                CollisionSystem *collisionSystem,
-                               EnemyManager *enemyManager)
+                               EnemyManager *enemyManager,
+                               bool playerAlive)
 {
     for (Door *door : m_doors) {
         if (door) {
@@ -817,7 +944,7 @@ void LevelManager::updateDoors(float deltaTime,
         }
     }
 
-    Door *found = findTargetDoor(cameraPos, lookDir, collisionSystem);
+    Door *found = playerAlive ? findTargetDoor(cameraPos, lookDir, collisionSystem) : nullptr;
     if (m_targetDoor.data() != found) {
         m_targetDoor = found;
         emit targetDoorChanged();
@@ -826,8 +953,14 @@ void LevelManager::updateDoors(float deltaTime,
     updateInteractionPrompt(playerPos, enemyManager);
 }
 
-bool LevelManager::interactWithTargetDoor(const QVector3D &playerPos, EnemyManager *enemyManager)
+bool LevelManager::interactWithTargetDoor(const QVector3D &playerPos,
+                                          EnemyManager *enemyManager,
+                                          bool playerAlive)
 {
+    if (!playerAlive) {
+        return false;
+    }
+
     Door *door = m_targetDoor.data();
     if (!door) {
         return false;
@@ -840,17 +973,22 @@ bool LevelManager::interactWithTargetDoor(const QVector3D &playerPos, EnemyManag
     }
 
     if (door->doorState() == Door::DoorState::Locked) {
-        // Day 1 scope: Standard doors require no keys; Key/Area/MainExit doors wait for Day 2 four-key integration
-        bool accessGranted = (door->doorType() == Door::DoorType::Standard);
-        QString denyReason = door->lockedReason();
+        QString denyReason;
+        bool accessGranted = evaluateDoorAccess(door, denyReason);
         if (!accessGranted) {
             bool ok = door->interact(false, denyReason, false);
             Q_UNUSED(ok);
-            emit doorInteractionFeedback(door->lockedReason(), QStringLiteral("#e74c3c"));
+            emit doorInteractionFeedback(denyReason, QStringLiteral("#e74c3c"));
             updateInteractionPrompt(playerPos, enemyManager);
             return false;
         }
         bool opened = door->interact(true, QString(), false);
+        if (opened) {
+            QString unlockedMsg = (door->doorType() == Door::DoorType::MainExit)
+                ? QStringLiteral("EXIT UNLOCKED — PROCEED TO EXTRACTION")
+                : QStringLiteral("ACCESS GRANTED — DOOR UNLOCKED");
+            emit doorInteractionFeedback(unlockedMsg, QStringLiteral("#2ecc71"));
+        }
         updateInteractionPrompt(playerPos, enemyManager);
         return opened;
     }
@@ -872,4 +1010,300 @@ bool LevelManager::interactWithTargetDoor(const QVector3D &playerPos, EnemyManag
     bool opening = door->interact(true, QString(), false);
     updateInteractionPrompt(playerPos, enemyManager);
     return opening;
+}
+
+// ==================== MISSION KEY PROGRESSION SYSTEM (DAY 2) ====================
+
+int LevelManager::popcount4(int mask) const
+{
+    int clamped = mask & 0xF;
+    int count = 0;
+    for (int bit = 0; bit < 4; ++bit) {
+        if ((clamped & (1 << bit)) != 0) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int LevelManager::collectedKeysMaskForLevel(int level) const
+{
+    int idx = qBound(1, level, m_maxLevels);
+    return m_keyMasks[static_cast<size_t>(idx)] & 0xF;
+}
+
+int LevelManager::collectedKeysCountForLevel(int level) const
+{
+    return popcount4(collectedKeysMaskForLevel(level));
+}
+
+int LevelManager::collectedKeysMask() const
+{
+    if (m_currentLevel < 1 || m_currentLevel > m_maxLevels) {
+        return 0;
+    }
+    return collectedKeysMaskForLevel(m_currentLevel);
+}
+
+int LevelManager::collectedKeysCount() const
+{
+    if (m_currentLevel < 1 || m_currentLevel > m_maxLevels) {
+        return 0;
+    }
+    return collectedKeysCountForLevel(m_currentLevel);
+}
+
+int LevelManager::totalKeysRequired() const
+{
+    return 4;
+}
+
+QVariantList LevelManager::levelKeys() const
+{
+    QVariantList list;
+    list.reserve(m_levelKeys.size());
+    for (AccessKeyPickup *key : m_levelKeys) {
+        list.append(QVariant::fromValue(key));
+    }
+    return list;
+}
+
+BossArena* LevelManager::bossArena() const
+{
+    return m_bossArena.data();
+}
+
+void LevelManager::setBossArena(BossArena *arena)
+{
+    if (m_bossArena.data() == arena) {
+        return;
+    }
+
+    if (m_ventsConn) {
+        disconnect(m_ventsConn);
+    }
+    if (m_bossConn) {
+        disconnect(m_bossConn);
+    }
+
+    m_bossArena = arena;
+    if (arena) {
+        m_ventsConn = connect(arena, &BossArena::ventsCountChanged, this, [this](int activeCount) {
+            bool defeated = m_bossArena ? m_bossArena->isBossDefeated() : m_bossCompleted;
+            setBossProgress(activeCount, defeated);
+        });
+        m_bossConn = connect(arena, &BossArena::bossDefeatedChanged, this, [this](bool defeated) {
+            int activeCount = m_bossArena ? m_bossArena->activeVentsCount() : m_activeVentsRemaining;
+            setBossProgress(activeCount, defeated);
+        });
+        setBossProgress(arena->activeVentsCount(), arena->isBossDefeated());
+    }
+
+    emit bossArenaChanged();
+}
+
+bool LevelManager::isBossCompleted() const
+{
+    return m_bossCompleted;
+}
+
+int LevelManager::activeVentsRemaining() const
+{
+    return m_activeVentsRemaining;
+}
+
+bool LevelManager::isExtractionAvailable() const
+{
+    if (!hasAllKeys()) {
+        return false;
+    }
+    if (m_currentLevel == 3) {
+        return m_bossCompleted && (m_activeVentsRemaining == 0);
+    }
+    return true;
+}
+
+void LevelManager::setBossProgress(int activeVentsRemaining, bool bossCompleted)
+{
+    int clampedVents = qBound(0, activeVentsRemaining, 4);
+    if (m_activeVentsRemaining == clampedVents && m_bossCompleted == bossCompleted) {
+        return;
+    }
+    m_activeVentsRemaining = clampedVents;
+    m_bossCompleted = bossCompleted;
+
+    // Immediately refresh HUD locked door prompt if targeting an extraction/exit door
+    if (m_targetDoor && m_targetDoor->doorState() == Door::DoorState::Locked) {
+        updateInteractionPrompt(QVector3D(), nullptr);
+    }
+    emit missionProgressChanged();
+}
+
+bool LevelManager::hasKey(int keyIndex, int level) const
+{
+    if (keyIndex < 0 || keyIndex >= 4) {
+        return false;
+    }
+    int targetLevel = (level > 0) ? level : m_currentLevel;
+    if (targetLevel < 1 || targetLevel > m_maxLevels) {
+        return false;
+    }
+    return (collectedKeysMaskForLevel(targetLevel) & (1 << keyIndex)) != 0;
+}
+
+bool LevelManager::hasAllKeys(int level) const
+{
+    int targetLevel = (level > 0) ? level : m_currentLevel;
+    if (targetLevel < 1 || targetLevel > m_maxLevels) {
+        return false;
+    }
+    return collectedKeysCountForLevel(targetLevel) >= 4;
+}
+
+bool LevelManager::collectKey(int keyIndex, bool playerAlive)
+{
+    if (!playerAlive || m_currentLevel < 1 || m_currentLevel > m_maxLevels) {
+        return false;
+    }
+    if (keyIndex < 0 || keyIndex >= 4) {
+        return false;
+    }
+
+    int &mask = m_keyMasks[static_cast<size_t>(m_currentLevel)];
+    const int bit = (1 << keyIndex);
+    if ((mask & bit) != 0) {
+        // Idempotent guard: already collected on this level
+        return false;
+    }
+
+    mask |= bit;
+    syncKeysFromMask();
+
+    QString label = QStringLiteral("ACCESS KEY %1").arg(keyIndex + 1);
+    for (const AccessKeyPickup *pickup : m_levelKeys) {
+        if (pickup && pickup->keyIndex() == keyIndex && !pickup->keyName().isEmpty()) {
+            label = pickup->keyName();
+            break;
+        }
+    }
+
+    const int count = popcount4(mask);
+    qDebug() << "[LevelManager] Collected" << label << "on Level" << m_currentLevel
+             << "-> Progress:" << count << "/ 4 (mask=" << mask << ")";
+
+    if (m_targetDoor && m_targetDoor->doorState() == Door::DoorState::Locked) {
+        updateInteractionPrompt(QVector3D(), nullptr);
+    }
+
+    emit keyCollected(keyIndex, label, count, 4);
+    emit missionKeysChanged(m_currentLevel, count, mask);
+    emit missionProgressChanged();
+    return true;
+}
+
+void LevelManager::resetCurrentLevelKeys()
+{
+    resetMissionKeys(m_currentLevel);
+}
+
+void LevelManager::resetMissionKeys(int level)
+{
+    if (level <= 0) {
+        resetAllCampaignKeys();
+        return;
+    }
+    if (level > m_maxLevels) {
+        return;
+    }
+
+    m_keyMasks[static_cast<size_t>(level)] = 0;
+    if (level == m_currentLevel) {
+        syncKeysFromMask();
+        if (m_targetDoor && m_targetDoor->doorState() == Door::DoorState::Locked) {
+            updateInteractionPrompt(QVector3D(), nullptr);
+        }
+        emit missionKeysChanged(m_currentLevel, 0, 0);
+        emit missionProgressChanged();
+    }
+}
+
+void LevelManager::resetAllCampaignKeys()
+{
+    m_keyMasks.fill(0);
+    syncKeysFromMask();
+    if (m_targetDoor && m_targetDoor->doorState() == Door::DoorState::Locked) {
+        updateInteractionPrompt(QVector3D(), nullptr);
+    }
+    emit missionKeysChanged(m_currentLevel, collectedKeysCount(), collectedKeysMask());
+    emit missionProgressChanged();
+}
+
+AccessKeyPickup* LevelManager::addKey(int row, int col, int keyIndex, const QString &name)
+{
+    if (row < 0 || row >= mapHeight() || col < 0 || col >= mapWidth()) {
+        qWarning() << "[LevelManager] Ignoring out-of-bounds key at (" << row << "," << col << ")";
+        return nullptr;
+    }
+    if (keyIndex < 0 || keyIndex >= 4) {
+        qWarning() << "[LevelManager] Ignoring invalid keyIndex:" << keyIndex;
+        return nullptr;
+    }
+
+    const float bs = GameConfig::BLOCK_SIZE;
+    QVector3D pos((col + 0.5f) * bs, 35.0f, (row + 0.5f) * bs);
+
+    AccessKeyPickup *pickup = new AccessKeyPickup(this);
+    pickup->configure(m_currentLevel, keyIndex, pos, name);
+    pickup->setCollected(hasKey(keyIndex));
+    m_levelKeys.append(pickup);
+
+    emit levelKeysChanged();
+    return pickup;
+}
+
+void LevelManager::clearKeys()
+{
+    if (!m_levelKeys.isEmpty()) {
+        QList<AccessKeyPickup*> oldKeys = m_levelKeys;
+        m_levelKeys.clear();
+        for (AccessKeyPickup *k : oldKeys) {
+            if (k) {
+                k->deleteLater();
+            }
+        }
+        emit levelKeysChanged();
+    }
+}
+
+void LevelManager::rebuildKeysForLevel(int level)
+{
+    clearKeys();
+
+    const QList<KeyDef> defs = LevelData::getLevelKeys(level);
+    for (const KeyDef &def : defs) {
+        addKey(def.row, def.col, def.keyIndex, def.name);
+    }
+    syncKeysFromMask();
+}
+
+void LevelManager::syncKeysFromMask()
+{
+    for (AccessKeyPickup *pickup : m_levelKeys) {
+        if (pickup) {
+            pickup->setCollected(hasKey(pickup->keyIndex()));
+        }
+    }
+}
+
+void LevelManager::updateKeys(float deltaTime, const QVector3D &playerPos, bool playerAlive)
+{
+    for (AccessKeyPickup *pickup : m_levelKeys) {
+        if (!pickup) {
+            continue;
+        }
+        pickup->update(deltaTime);
+        if (playerAlive && pickup->isPlayerInRange(playerPos, playerAlive)) {
+            collectKey(pickup->keyIndex(), playerAlive);
+        }
+    }
 }

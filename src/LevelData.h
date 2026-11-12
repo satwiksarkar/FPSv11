@@ -41,6 +41,14 @@ struct PickupItemDef {
     QString name;
 };
 
+struct KeyDef {
+    int level = 1;
+    int keyIndex = 0;   // 0..3 (Bit 0..Bit 3)
+    int row = 0;
+    int col = 0;
+    QString name;
+};
+
 /**
  * @brief LevelData manages all map definitions, story briefings, entity spawn positions,
  * and BFS reachability checks for Project VANGUARD.
@@ -84,8 +92,9 @@ public:
     static QList<PickupItemDef> getLevel3Pickups();
     static QVector3D getLevel3CoreCenter();
 
-    // Door definitions per level (populated in Day 3 map redesign)
+    // Door & mission key definitions per level (populated in Day 3 map redesign)
     static QList<DoorDef> getLevelDoors(int level);
+    static QList<KeyDef> getLevelKeys(int level);
 
     // Map arrays
     static const int level1[LEVEL1_SIZE][LEVEL1_SIZE];

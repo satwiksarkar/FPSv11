@@ -290,10 +290,15 @@ Node {
         ]
     }
 
-    // ==================== EXIT PLATFORM MARKER (TILES 4 & 6) ====================
+    // ==================== EXIT PLATFORM MARKER (TILES 4, 6 & 11) ====================
     Node {
         id: exitPlatformMarker
-        visible: root.levelManager && (root.levelManager.currentLevel === 1 || root.levelManager.currentLevel === 2)
+        visible: root.levelManager && (
+                     root.levelManager.currentLevel === 1 ||
+                     root.levelManager.currentLevel === 2 ||
+                     (root.levelManager.currentLevel === 3 &&
+                      root.levelManager.getTileAtWorldPos(root.levelManager.exitCenterPosition.x,
+                                                          root.levelManager.exitCenterPosition.z) === 11))
         position: root.levelManager ? root.levelManager.exitCenterPosition : Qt.vector3d(1350, 2, 250)
 
         Model {
@@ -385,6 +390,15 @@ Node {
         DoorModel {
             door: modelData
             pocketTexture: texSteelWall
+        }
+    }
+
+    // ==================== COLLECTIBLE ACCESS KEYS (Rendered via AccessKeyModel) ====================
+    Repeater3D {
+        model: root.levelManager ? root.levelManager.levelKeys : []
+
+        AccessKeyModel {
+            keyPickup: modelData
         }
     }
 }

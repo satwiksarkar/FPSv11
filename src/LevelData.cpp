@@ -313,6 +313,15 @@ QVector3D LevelData::getExitCenterPosition(int level)
         return QVector3D((29.0f + 0.5f) * bs, 2.0f, (2.0f + 0.5f) * bs);
     } else if (level == 2) {
         return QVector3D((31.0f + 0.5f) * bs, 2.0f, (58.0f + 0.5f) * bs);
+    } else if (level == 3) {
+        for (int r = 0; r < LEVEL3_SIZE; ++r) {
+            for (int c = 0; c < LEVEL3_SIZE; ++c) {
+                if (level3[r][c] == TileCode::Level3Exit) {
+                    return QVector3D((c + 0.5f) * bs, 2.0f, (r + 0.5f) * bs);
+                }
+            }
+        }
+        return QVector3D((20.0f + 0.5f) * bs, 2.0f, (2.0f + 0.5f) * bs);
     }
     return QVector3D(0.0f, 0.0f, 0.0f);
 }
@@ -322,6 +331,7 @@ int LevelData::getExitTileCode(int level)
     switch (level) {
     case 1:  return TileCode::Level1Exit; // 4
     case 2:  return TileCode::Level2Exit; // 6
+    case 3:  return TileCode::Level3Exit; // 11
     default: return -1;
     }
 }
@@ -622,6 +632,13 @@ QVector3D LevelData::getLevel3CoreCenter()
 QList<DoorDef> LevelData::getLevelDoors(int level)
 {
     Q_UNUSED(level);
-    // Maps are unchanged for Day 1; door layouts are populated in Day 3.
+    // Maps are unchanged for Day 1/Day 2; door layouts are populated in Day 3.
+    return {};
+}
+
+QList<KeyDef> LevelData::getLevelKeys(int level)
+{
+    Q_UNUSED(level);
+    // Maps are unchanged for Day 2; permanent key layouts are populated in Day 3.
     return {};
 }

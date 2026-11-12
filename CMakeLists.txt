@@ -32,6 +32,7 @@ qt_add_qml_module(FPSLabGame
         qml/EnemyModel.qml
         qml/VentModel.qml
         qml/DoorModel.qml
+        qml/AccessKeyModel.qml
     RESOURCES
         qml/dark_hallway.frag
         qml/dark_hallway.vert
@@ -87,6 +88,8 @@ qt_add_qml_module(FPSLabGame
         src/Inventory.cpp
         src/Pickup.h
         src/Pickup.cpp
+        src/AccessKeyPickup.h
+        src/AccessKeyPickup.cpp
         src/Door.h
         src/Door.cpp
         src/CollisionSystem.h

@@ -67,6 +67,7 @@ Window {
     // ==================== CAMPAIGN & LEVEL MANAGER ====================
     LevelManager {
         id: levelManager
+        bossArena: bossArena
         onExitReached: function(nextLevel) {
             console.log("[Main] Exit tile reached. Advancing to Level:", nextLevel)
             playSound("level_clear")
@@ -97,13 +98,17 @@ Window {
             root.hitNotificationColor = colorHex
             hitNotificationTimer.restart()
         }
+        onKeyCollected: function(keyIndex, keyName, collectedCount, totalRequired) {
+            root.hitNotificationText = "ACQUIRED " + keyName + " (" + collectedCount + "/" + totalRequired + ")"
+            root.hitNotificationColor = "#00e5ff"
+            hitNotificationTimer.restart()
+            playSound("pickup")
+        }
     }
 
     // ==================== CORE GAME ENTITIES ====================
     GameManager {
         id: gameManager
-        onGameStarted: root.startCampaign()
-        onGameRestarted: root.startCampaign()
         onDifficultyChanged: root.applyWeaponDifficultyTuning()
         onGameStateChanged: {
             if (!isPlaying) {
@@ -264,17 +269,13 @@ Window {
     BossArena {
         id: bossArena
         onBossDefeated: {
-            console.log("[Main] All 4 Cooling Vents destroyed! VANGUARD core collapsed.")
-            audioManager.stopAmbient()
+            console.log("[Main] All 4 Cooling Vents destroyed! VANGUARD core overloaded — awaiting physical extraction.")
             enemyManager.clearAll()
             gameManager.addScore(1000)
-            root.hitNotificationText = "CRITICAL OVERLOAD: VANGUARD DESTROYED! (+1000 PTS)"
+            root.hitNotificationText = "CORE OVERLOADED — UNLOCK & REACH EXTRACTION!"
             root.hitNotificationColor = "#2ecc71"
             hitNotificationTimer.restart()
-            playSound("enemy_hit")
-
-            levelManager.loadLevel(4)
-            gameManager.showStory()
+            playSound("vent_explode")
         }
         onVentDestroyed: function(index) {
             gameManager.addScore(250)
@@ -386,9 +387,9 @@ Window {
             }
         }
 
-        levelManager.loadLevel(lvl)
-        animationManager.clearAll()
         bossArena.reset()
+        levelManager.loadLevel(lvl, true)
+        animationManager.clearAll()
         player.reset()
         player.position = levelManager.spawnPosition
         player.setPosition(levelManager.spawnPosition)
@@ -491,9 +492,27 @@ Window {
         root.enemiesSpawnedForLevel = false
     }
 
+    function startNewCampaign(startLvl) {
+        var targetLvl = (startLvl && startLvl > 0) ? startLvl : 1
+        levelManager.resetAllCampaignKeys()
+        setupLevel(targetLvl, false)
+        gameManager.startGame()
+    }
+
+    function restartCurrentLevel() {
+        var lvl = (levelManager.currentLevel >= 1 && levelManager.currentLevel <= 3)
+            ? levelManager.currentLevel : 1
+        levelManager.resetMissionKeys(lvl)
+        setupLevel(lvl, false)
+        gameManager.restartCurrentLevel()
+        audioManager.playAmbient(lvl)
+        root.mouseLookActive = true
+        inputHandler.forceActiveFocus()
+    }
+
     function startCampaign() {
         var startLvl = (mainMenu.selectedLevel > 0) ? mainMenu.selectedLevel : 1
-        setupLevel(startLvl)
+        startNewCampaign(startLvl)
     }
 
     function spawnEnemiesForLevel() {
@@ -542,7 +561,8 @@ Window {
     function advanceToNextLevel() {
         var nextLvl = levelManager.currentLevel + 1
         if (nextLvl > 3) {
-            gameManager.triggerWin()
+            levelManager.loadLevel(4)
+            gameManager.showStory()
             return
         }
         setupLevel(nextLvl, true)
@@ -594,12 +614,14 @@ Window {
             sniperWeapon.update(frameTime)
             heavyWeapon.update(frameTime)
             gameWorld.door.update(frameTime)
+            levelManager.updateKeys(frameTime, player.position, !player.isDead)
             levelManager.updateDoors(frameTime,
                                      player.position,
                                      player.cameraPosition,
                                      root.playerLookDirection(),
                                      gameWorld.collisionSystem,
-                                     enemyManager)
+                                     enemyManager,
+                                     !player.isDead)
             animationManager.update(frameTime)
 
             // Real-time FPS metric
@@ -632,7 +654,7 @@ Window {
             bossArena.update(frameTime, enemyManager, levelManager)
 
             // Check exit tile reach every frame
-            levelManager.checkExitReached(player.position)
+            levelManager.checkExitReached(player.position, !player.isDead)
 
             // Check trigger traps every frame (Stage V6 crossfire ambush)
             levelManager.checkTriggerTrap(player.position, player.yaw)
@@ -1353,7 +1375,7 @@ Window {
             else if (event.key === Qt.Key_E) {
                 if (!event.isAutoRepeat && !eKeyHeld) {
                     eKeyHeld = true
-                    levelManager.interactWithTargetDoor(player.position, enemyManager)
+                    levelManager.interactWithTargetDoor(player.position, enemyManager, !player.isDead)
                 }
             }
             else if (event.key === Qt.Key_F) {
@@ -1486,9 +1508,18 @@ Window {
         totalVentHp: bossArena.totalVentHp
         maxTotalVentHp: bossArena.maxTotalVentHp
         bossArenaRef: bossArena
+        collectedKeysCount: levelManager.collectedKeysCount
+        totalKeysRequired: levelManager.totalKeysRequired
+        collectedKeysMask: levelManager.collectedKeysMask
+        bossCompleted: levelManager.bossCompleted
+        extractionAvailable: levelManager.extractionAvailable
         objectiveText: (levelManager.currentLevel === 3)
-            ? "THE LOGIC CORE // OBJECTIVE: Destroy all 4 glowing Cyan Cooling Vents! (Drones spawn infinitely)"
-            : (levelManager.currentLevelName + " // OBJECTIVE: Reach the extraction tile")
+            ? (levelManager.extractionAvailable
+                ? "CORE OVERLOADED // OBJECTIVE: Reach the Extraction Tile!"
+                : ("THE LOGIC CORE // KEYS: " + levelManager.collectedKeysCount + "/4 | VENTS: " + bossArena.activeVentsCount + "/4 remaining"))
+            : (levelManager.collectedKeysCount >= levelManager.totalKeysRequired
+                ? (levelManager.currentLevelName + " // OBJECTIVE: All keys collected — Reach the extraction tile!")
+                : (levelManager.currentLevelName + " // OBJECTIVE: Collect Access Keys (" + levelManager.collectedKeysCount + "/4)"))
         hitFeedbackText: root.hitNotificationText
         hitFeedbackColor: root.hitNotificationColor
         foodPacks: player.inventory ? player.inventory.foodPacks : 0
@@ -1534,13 +1565,11 @@ Window {
         gameManager: gameManager
         onStartGameRequested: {
             var lvl = mainMenu.selectedLevel ? mainMenu.selectedLevel : 1
-            root.setupLevel(lvl)
-            gameManager.startGame()
+            root.startNewCampaign(lvl)
         }
         onStartLevelRequested: function(lvl) {
             mainMenu.selectedLevel = lvl
-            root.setupLevel(lvl)
-            gameManager.startGame()
+            root.startNewCampaign(lvl)
         }
         onExitRequested: {
             Qt.quit()
@@ -1560,15 +1589,14 @@ Window {
             inputHandler.forceActiveFocus()
         }
         onRestartRequested: {
-            root.setupLevel(levelManager.currentLevel)
-            gameManager.resumeGame()
+            root.restartCurrentLevel()
             audioManager.playAmbient(levelManager.currentLevel)
             root.mouseLookActive = true
             inputHandler.forceActiveFocus()
         }
         onChangeLevelRequested: function(lvl) {
-            root.setupLevel(lvl)
-            gameManager.resumeGame()
+            root.setupLevel(lvl, false)
+            gameManager.restartCurrentLevel()
             audioManager.playAmbient(lvl)
             root.mouseLookActive = true
             inputHandler.forceActiveFocus()
@@ -1588,10 +1616,14 @@ Window {
         isWon: gameManager.isWon
         finalScore: gameManager.score
         onRestartRequested: {
-            root.setupLevel(levelManager.currentLevel)
-            gameManager.restartGame()
-            root.mouseLookActive = true
-            inputHandler.forceActiveFocus()
+            if (gameManager.isWon) {
+                root.startNewCampaign(1)
+            } else {
+                root.restartCurrentLevel()
+                audioManager.playAmbient(levelManager.currentLevel)
+                root.mouseLookActive = true
+                inputHandler.forceActiveFocus()
+            }
         }
         onMainMenuRequested: {
             audioManager.stopAmbient()
