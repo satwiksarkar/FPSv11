@@ -1,4 +1,4 @@
-﻿#include "LevelManager.h"
+#include "LevelManager.h"
 #include "GameConfig.h"
 #include "CollisionSystem.h"
 #include "EnemyManager.h"
@@ -505,6 +505,12 @@ Door* LevelManager::addDoor(int row,
         emit doorTriggered();
     });
 
+    connect(door, &Door::doorObstructed, this, [this](bool midCloseReversal) {
+        if (midCloseReversal) {
+            emit doorInteractionFeedback(QStringLiteral("DOOR OBSTRUCTED — REOPENING"), QStringLiteral("#e67e22"));
+        }
+    });
+
     m_doors.append(door);
     m_doorTileLookup.insert(tileKey, door);
     emit doorsChanged();
@@ -606,34 +612,79 @@ bool LevelManager::isRayOccludedBefore(const QVector3D &origin,
                                        float targetDist,
                                        CollisionSystem *collisionSystem) const
 {
-    if (!collisionSystem) {
+    Q_UNUSED(collisionSystem);
+    if (normDir.isNull() || targetDist <= 0.5f) {
         return false;
     }
 
-    float wallDist = 0.0f;
-    QVector3D wallHitPos;
-    int wallHitTile = TileCode::Empty;
-    if (!collisionSystem->raycastDDA(const_cast<LevelManager*>(this),
-                                     origin,
-                                     normDir,
-                                     targetDist,
-                                     wallDist,
-                                     wallHitPos,
-                                     wallHitTile,
-                                     false)) {
-        return false;
+    const float maxCheckDist = targetDist - 0.5f;
+    const float bs = GameConfig::BLOCK_SIZE;
+    const int mapW = mapWidth();
+    const int mapH = mapHeight();
+    const float wallHeight = (m_currentLevel == 3) ? (GameConfig::WALL_HEIGHT * 2.0f) : GameConfig::WALL_HEIGHT;
+
+    int col = qFloor(origin.x() / bs);
+    int row = qFloor(origin.z() / bs);
+
+    const int stepX = (normDir.x() >= 0.0f) ? 1 : -1;
+    const int stepZ = (normDir.z() >= 0.0f) ? 1 : -1;
+
+    const float dx = normDir.x();
+    const float dz = normDir.z();
+    const float tDeltaX = (std::abs(dx) > 1e-6f) ? std::abs(bs / dx) : 1e9f;
+    const float tDeltaZ = (std::abs(dz) > 1e-6f) ? std::abs(bs / dz) : 1e9f;
+
+    const float nextBoundaryX = (stepX > 0) ? (col + 1) * bs : col * bs;
+    const float nextBoundaryZ = (stepZ > 0) ? (row + 1) * bs : row * bs;
+    float tMaxX = (std::abs(dx) > 1e-6f) ? (nextBoundaryX - origin.x()) / dx : 1e9f;
+    float tMaxZ = (std::abs(dz) > 1e-6f) ? (nextBoundaryZ - origin.z()) / dz : 1e9f;
+
+    auto cellOccludesInSegment = [&](int r, int c, float tEnter, float tExit) -> bool {
+        if (r < 0 || r >= mapH || c < 0 || c >= mapW) {
+            return false;
+        }
+        int tile = getTile(r, c);
+        if (tile != TileCode::Wall && tile != TileCode::Crate &&
+            tile != TileCode::CoreWall && tile != TileCode::DoorPocket) {
+            return false;
+        }
+        float yEnter = origin.y() + normDir.y() * tEnter;
+        float yExit = origin.y() + normDir.y() * tExit;
+        float minY = std::min(yEnter, yExit);
+        float maxY = std::max(yEnter, yExit);
+        float heightLimit = (tile == TileCode::Crate) ? GameConfig::CRATE_HEIGHT : wallHeight;
+        // Ray segment intersects vertical volume [0, heightLimit]
+        return (minY <= heightLimit && maxY >= 0.0f);
+    };
+
+    float t = 0.0f;
+    float firstExit = std::min({tMaxX, tMaxZ, maxCheckDist});
+    if (cellOccludesInSegment(row, col, t, firstExit)) {
+        return true;
     }
 
-    if (wallDist >= targetDist - 0.5f) {
-        return false;
+    while (true) {
+        if (tMaxX < tMaxZ) {
+            t = tMaxX;
+            tMaxX += tDeltaX;
+            col += stepX;
+        } else {
+            t = tMaxZ;
+            tMaxZ += tDeltaZ;
+            row += stepZ;
+        }
+
+        if (t >= maxCheckDist || col < 0 || col >= mapW || row < 0 || row >= mapH) {
+            break;
+        }
+
+        float tExit = std::min({tMaxX, tMaxZ, maxCheckDist});
+        if (cellOccludesInSegment(row, col, t, tExit)) {
+            return true;
+        }
     }
 
-    // Crates only rise to CRATE_HEIGHT (200 units); allow aiming above them if unobstructed higher up
-    if (wallHitTile == TileCode::Crate && wallHitPos.y() > GameConfig::CRATE_HEIGHT) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 Door* LevelManager::findTargetDoor(const QVector3D &cameraPos,
@@ -757,7 +808,9 @@ void LevelManager::updateDoors(float deltaTime,
 {
     for (Door *door : m_doors) {
         if (door) {
-            bool obstructed = (door->doorState() == Door::DoorState::Closing)
+            bool checkEntityOverlap = (door->doorState() == Door::DoorState::Closing ||
+                                       door->doorState() == Door::DoorState::Opening);
+            bool obstructed = checkEntityOverlap
                 ? isDoorTileObstructed(door, playerPos, enemyManager)
                 : false;
             door->update(deltaTime, obstructed);

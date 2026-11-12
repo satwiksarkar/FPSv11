@@ -9,6 +9,7 @@ Door::Door(QObject *parent)
     , m_isOpening(false)
     , m_isClosing(false)
     , m_blocking(true)
+    , m_reopeningUnblocked(false)
     , m_openProgress(0.0f)
     , m_animSpeed(1.8f) // ~0.556s full open/close slide duration
     , m_closeHeight(110.0f)
@@ -73,6 +74,7 @@ void Door::setOpen(bool open)
     m_isOpen = open;
     m_isOpening = false;
     m_isClosing = false;
+    m_reopeningUnblocked = false;
     m_openProgress = targetProgress;
 
     setStateInternal(targetState);
@@ -217,8 +219,25 @@ QString Door::defaultLockedReason() const
 
 void Door::updateBlockingFlag()
 {
-    // Release collision blocking ONLY when sliding panels have reached full 100-unit clearance (1.0f)
-    bool shouldBlock = (m_openProgress < 1.0f) || (m_state != DoorState::Open);
+    // Rule Y collision model:
+    // - Locked, Closed: blocking = true
+    // - Opening: blocking = true until openProgress reaches 1.0f (except anti-crush reopen while entity clears doorway)
+    // - Open, Closing: blocking = false until Closing reaches openProgress <= 0.0f (Closed)
+    bool shouldBlock = false;
+    switch (m_state) {
+    case DoorState::Locked:
+    case DoorState::Closed:
+        shouldBlock = true;
+        break;
+    case DoorState::Opening:
+        shouldBlock = !m_reopeningUnblocked && (m_openProgress < 1.0f);
+        break;
+    case DoorState::Open:
+    case DoorState::Closing:
+        shouldBlock = false;
+        break;
+    }
+
     if (m_blocking != shouldBlock) {
         m_blocking = shouldBlock;
         emit blockingChanged(m_blocking);
@@ -269,6 +288,7 @@ bool Door::tryOpen(bool accessGranted, const QString &denyReason)
     m_isOpening = true;
     m_isClosing = false;
     m_isOpen = false;
+    m_reopeningUnblocked = false;
     setStateInternal(DoorState::Opening);
     updateBlockingFlag();
     emit openingChanged(true);
@@ -291,7 +311,7 @@ bool Door::tryClose(bool isObstructed)
 
     // Anti-crush / anti-trap check: refuse closing while player or enemy overlaps doorway tile
     if (isObstructed) {
-        emit doorObstructed();
+        emit doorObstructed(false);
         qDebug() << "[Door]" << m_doorId << "close blocked: entity inside doorway.";
         return false;
     }
@@ -300,6 +320,7 @@ bool Door::tryClose(bool isObstructed)
     m_isOpen = false;
     m_isOpening = false;
     m_isClosing = true;
+    m_reopeningUnblocked = false;
     setStateInternal(DoorState::Closing);
     updateBlockingFlag();
     emit openChanged(false);
@@ -359,11 +380,15 @@ void Door::update(float deltaTime, bool isObstructed)
     float dt = qBound(0.0f, deltaTime, 0.1f);
 
     if (m_state == DoorState::Opening) {
+        if (m_reopeningUnblocked && !isObstructed) {
+            m_reopeningUnblocked = false;
+        }
         m_openProgress = qMin(1.0f, m_openProgress + dt * m_animSpeed);
         if (m_openProgress >= 1.0f) {
             m_openProgress = 1.0f;
             m_isOpening = false;
             m_isOpen = true;
+            m_reopeningUnblocked = false;
             setStateInternal(DoorState::Open);
             updateBlockingFlag(); // Only now does blocking transition to false (openProgress == 1.0f)
             emit openingChanged(false);
@@ -375,30 +400,34 @@ void Door::update(float deltaTime, bool isObstructed)
         }
         emit openProgressChanged(m_openProgress);
     } else if (m_state == DoorState::Closing) {
-        // Anti-crush / anti-trap runtime guard: if an entity stepped into the doorway before panels closed, reverse cleanly
+        // Anti-crush / anti-trap runtime guard: if an entity stepped into the doorway before panels closed,
+        // immediately reverse back to Opening before collision is restored
         if (isObstructed) {
             m_isClosing = false;
             m_isOpening = true;
+            m_reopeningUnblocked = true;
             setStateInternal(DoorState::Opening);
             updateBlockingFlag();
             emit closingChanged(false);
             emit openingChanged(true);
-            emit doorObstructed();
+            emit doorAnimationStarted(true);
+            emit doorObstructed(true);
             qDebug() << "[Door]" << m_doorId << "anti-crush triggered during close: reopening.";
             return;
         }
 
         m_openProgress = qMax(0.0f, m_openProgress - dt * m_animSpeed);
-        updateBlockingFlag();
         if (m_openProgress <= 0.0f) {
             m_openProgress = 0.0f;
             m_isClosing = false;
             m_isOpen = false;
             setStateInternal(DoorState::Closed);
-            updateBlockingFlag();
+            updateBlockingFlag(); // Rule Y: restore collision strictly when panels reach 0.0 (Closed)
             emit closingChanged(false);
             emit doorClosed();
-            qDebug() << "[Door]" << m_doorId << "fully closed.";
+            qDebug() << "[Door]" << m_doorId << "fully closed (collision restored).";
+        } else {
+            updateBlockingFlag();
         }
         emit openProgressChanged(m_openProgress);
     }
@@ -409,6 +438,7 @@ void Door::reset()
     m_isOpen = false;
     m_isOpening = false;
     m_isClosing = false;
+    m_reopeningUnblocked = false;
     m_openProgress = 0.0f;
 
     DoorState initialState = (m_doorType == DoorType::Standard) ? DoorState::Closed : DoorState::Locked;

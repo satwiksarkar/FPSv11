@@ -68,6 +68,9 @@ Item {
     property bool flashlightActive: true
     property bool hallwayDarknessActive: true
 
+    // Contextual Door Interaction Prompt (continuously updated when targeting a door)
+    property string interactionPrompt: ""
+
     // ==================== FULLSCREEN DAMAGE & HEAL FLASHES ====================
     Rectangle {
         id: damageOverlay
@@ -815,6 +818,43 @@ Item {
         font.pixelSize: 16
         font.bold: true
         visible: text.length > 0
+    }
+
+    // ==================== CENTER-LOWER: CONTEXTUAL DOOR INTERACTION PROMPT ====================
+    Rectangle {
+        id: doorPromptBanner
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: 72
+        width: doorPromptText.implicitWidth + 28
+        height: 30
+        visible: root.interactionPrompt.length > 0
+        color: "#e6101216"
+        border.width: 1
+        border.color: {
+            if (root.interactionPrompt.indexOf("[LOCKED]") !== -1)
+                return "#e74c3c"
+            if (root.interactionPrompt.indexOf("OBSTRUCTED") !== -1)
+                return "#e67e22"
+            return "#00e5ff"
+        }
+        radius: 0
+
+        Text {
+            id: doorPromptText
+            anchors.centerIn: parent
+            text: root.interactionPrompt
+            color: {
+                if (root.interactionPrompt.indexOf("[LOCKED]") !== -1)
+                    return "#ff7675"
+                if (root.interactionPrompt.indexOf("OBSTRUCTED") !== -1)
+                    return "#f39c12"
+                return "#ffffff"
+            }
+            font.pixelSize: 12
+            font.bold: true
+            font.letterSpacing: 1
+        }
     }
 
     // ==================== LEVEL 3: COOLING VENTS STATUS BADGE (STAGE V7) ====================

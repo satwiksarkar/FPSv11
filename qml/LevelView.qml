@@ -377,4 +377,14 @@ Node {
             cameraYaw: root.cameraYaw
         }
     }
+
+    // ==================== INTERACTIVE BULKHEAD DOORS (Rendered via DoorModel) ====================
+    Repeater3D {
+        model: root.levelManager ? root.levelManager.doors : []
+
+        DoorModel {
+            door: modelData
+            pocketTexture: texSteelWall
+        }
+    }
 }

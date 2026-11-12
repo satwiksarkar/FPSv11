@@ -1502,6 +1502,7 @@ Window {
         healFlashIntensity: animationManager.healFlash
         flashlightActive: root.flashlightActive
         hallwayDarknessActive: root.hallwayDarknessActive
+        interactionPrompt: levelManager.interactionPrompt
     }
 
     // ==================== STORY SCREEN (STAGE V2) ====================

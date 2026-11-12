@@ -131,7 +131,7 @@ signals:
     void doorAnimationStarted(bool opening);
     void doorUnlocked();
     void doorAccessDenied(const QString &reason);
-    void doorObstructed();
+    void doorObstructed(bool midCloseReversal);
 
 private:
     QString defaultLockedReason() const;
@@ -142,6 +142,7 @@ private:
     bool m_isOpening;
     bool m_isClosing;
     bool m_blocking;
+    bool m_reopeningUnblocked;
     float m_openProgress;
     float m_animSpeed;
     float m_closeHeight;
