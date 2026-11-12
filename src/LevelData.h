@@ -17,7 +17,23 @@ namespace TileCode {
     constexpr int HeavyWeaponPickup = 7;  // heavy weapon pickup tile (one in Level 2)
     constexpr int TriggerTrap = 8;        // invisible trigger tile (Level 2 crossfire trap; floor)
     constexpr int CoreWall = 9;           // VANGUARD core wall tile (Level 3, solid, armored)
+    constexpr int Door = 10;              // interactive door aperture (solid when closed)
+    constexpr int Level3Exit = 11;        // Level 3 exit tile (extraction pad)
+    constexpr int DoorPocket = 12;        // recessed sliding door pocket housing (solid)
 }
+
+struct DoorDef {
+    int id = 0;
+    int row = 0;
+    int col = 0;
+    float axis = 0.0f;           // 0.0 = N-S passage (wall along X), 90.0 = E-W passage (wall along Z)
+    int doorType = 0;            // matches Door::DoorType
+    int requiredKeyIndex = -1;   // 0..3 for KeyLocked, -1 otherwise
+    int requiredKeyCount = 0;    // minimum keys required for AreaLocked/MainExit
+    int requiredKeyMask = 0;     // optional specific key bitmask
+    bool requiresBossDefeated = false;
+    QString label;
+};
 
 struct PickupItemDef {
     QVector3D position;
@@ -67,6 +83,9 @@ public:
     static QList<QVector3D> getLevel3PerimeterDroneSpawns();
     static QList<PickupItemDef> getLevel3Pickups();
     static QVector3D getLevel3CoreCenter();
+
+    // Door definitions per level (populated in Day 3 map redesign)
+    static QList<DoorDef> getLevelDoors(int level);
 
     // Map arrays
     static const int level1[LEVEL1_SIZE][LEVEL1_SIZE];

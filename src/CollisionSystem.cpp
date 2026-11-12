@@ -212,7 +212,8 @@ bool CollisionSystem::raycastDDA(LevelManager *levelManager,
                                 float maxDist,
                                 float &outDist,
                                 QVector3D &outHitPos,
-                                int &outHitTile) const
+                                int &outHitTile,
+                                bool includeDoors) const
 {
     if (!levelManager) {
         return false;
@@ -227,12 +228,17 @@ bool CollisionSystem::raycastDDA(LevelManager *levelManager,
     int mapW = levelManager->mapWidth();
     int mapH = levelManager->mapHeight();
 
+    auto isBlockingCell = [&](int r, int c) -> bool {
+        return includeDoors ? levelManager->isSolidTile(r, c)
+                            : levelManager->isStaticSolidTile(r, c);
+    };
+
     // Starting tile coordinate
     int col = qFloor(origin.x() / blockSize);
     int row = qFloor(origin.z() / blockSize);
 
     // If starting inside a solid tile
-    if (col >= 0 && col < mapW && row >= 0 && row < mapH && levelManager->isSolidTile(row, col)) {
+    if (col >= 0 && col < mapW && row >= 0 && row < mapH && isBlockingCell(row, col)) {
         outDist = 0.0f;
         outHitPos = origin;
         outHitTile = levelManager->getTile(row, col);
@@ -275,7 +281,7 @@ bool CollisionSystem::raycastDDA(LevelManager *levelManager,
             break;
         }
 
-        if (levelManager->isSolidTile(row, col)) {
+        if (isBlockingCell(row, col)) {
             outDist = t;
             outHitPos = origin + dir * t;
             outHitTile = levelManager->getTile(row, col);

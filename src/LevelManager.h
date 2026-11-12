@@ -4,14 +4,22 @@
 #include <QObject>
 #include <QString>
 #include <QVector3D>
+#include <QList>
+#include <QHash>
+#include <QPointer>
 #include <QSet>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 #include "LevelData.h"
+#include "Door.h"
+
+class CollisionSystem;
+class EnemyManager;
 
 /**
  * @brief The LevelManager class manages current campaign progress, active tile maps,
  * story briefing transitions, spawn coordinates, BFS reachability validation,
- * and exit/pickup triggers for Project VANGUARD.
+ * exit/pickup triggers, and the level door system for Project VANGUARD.
  */
 class LevelManager : public QObject
 {
@@ -32,6 +40,11 @@ class LevelManager : public QObject
     Q_PROPERTY(bool heavyWeaponCollected READ isHeavyWeaponCollected NOTIFY heavyWeaponCollectedChanged)
     Q_PROPERTY(QVector3D heavyWeaponSpawnPosition READ heavyWeaponSpawnPosition CONSTANT)
 
+    // Door system properties (Day 1)
+    Q_PROPERTY(QVariantList doors READ doors NOTIFY doorsChanged)
+    Q_PROPERTY(Door* targetDoor READ targetDoor NOTIFY targetDoorChanged)
+    Q_PROPERTY(QString interactionPrompt READ interactionPrompt NOTIFY interactionPromptChanged)
+
 public:
     explicit LevelManager(QObject *parent = nullptr);
 
@@ -49,6 +62,11 @@ public:
     bool isHeavyWeaponCollected() const;
     QVector3D heavyWeaponSpawnPosition() const;
 
+    // Door system getters
+    QVariantList doors() const;
+    Door* targetDoor() const;
+    QString interactionPrompt() const;
+
     // Level progression actions
     Q_INVOKABLE void loadLevel(int levelIndex);
     Q_INVOKABLE void advanceLevel();
@@ -57,7 +75,32 @@ public:
     // Tile grid queries
     Q_INVOKABLE int getTile(int row, int col) const;
     Q_INVOKABLE int getTileAtWorldPos(float x, float z) const;
+    Q_INVOKABLE bool isStaticSolidTile(int row, int col) const;
     Q_INVOKABLE bool isSolidTile(int row, int col) const;
+
+    // Door system API
+    Q_INVOKABLE int doorCount() const;
+    Q_INVOKABLE Door* doorAt(int index) const;
+    Q_INVOKABLE Door* doorAtTile(int row, int col) const;
+    Q_INVOKABLE Door* addDoor(int row,
+                              int col,
+                              float axis = 0.0f,
+                              int doorType = 0,
+                              int requiredKeyIndex = -1,
+                              int requiredKeyCount = 0,
+                              int requiredKeyMask = 0,
+                              bool requiresBossDefeated = false,
+                              const QString &label = QString());
+    Q_INVOKABLE void clearDoors();
+
+    Q_INVOKABLE void updateDoors(float deltaTime,
+                                 const QVector3D &playerPos,
+                                 const QVector3D &cameraPos,
+                                 const QVector3D &lookDir,
+                                 CollisionSystem *collisionSystem = nullptr,
+                                 EnemyManager *enemyManager = nullptr);
+    Q_INVOKABLE bool interactWithTargetDoor(const QVector3D &playerPos,
+                                            EnemyManager *enemyManager = nullptr);
 
     // Exit tile trigger detection called each frame
     Q_INVOKABLE bool checkExitReached(const QVector3D &playerPos);
@@ -98,7 +141,26 @@ signals:
     void heavyWeaponCollected();
     void trapTriggered(const QVector3D &spawnPos, int enemyType);
 
+    // Door signals
+    void doorsChanged();
+    void targetDoorChanged();
+    void interactionPromptChanged();
+    void doorTriggered();
+    void doorInteractionFeedback(const QString &message, const QString &colorHex);
+
 private:
+    void rebuildDoorsForLevel(int level);
+    bool isDoorTileObstructed(const Door *door, const QVector3D &playerPos, EnemyManager *enemyManager) const;
+    bool isRayOccludedBefore(const QVector3D &origin,
+                             const QVector3D &normDir,
+                             float targetDist,
+                             CollisionSystem *collisionSystem) const;
+    Door* findTargetDoor(const QVector3D &cameraPos,
+                         const QVector3D &lookDir,
+                         CollisionSystem *collisionSystem) const;
+    void updateInteractionPrompt(const QVector3D &playerPos, EnemyManager *enemyManager);
+    QString buildDoorPrompt(const Door *door, const QVector3D &playerPos, EnemyManager *enemyManager) const;
+
     int m_currentLevel;
     int m_maxLevels;
     bool m_exitTriggered;
@@ -106,6 +168,11 @@ private:
     bool m_heavyWeaponCollected;
     QSet<int> m_consumedAmmoTiles;
     QSet<int> m_triggeredTraps;
+
+    QList<Door*> m_doors;
+    QHash<int, Door*> m_doorTileLookup;
+    QPointer<Door> m_targetDoor;
+    QString m_interactionPrompt;
 };
 
 #endif // LEVELMANAGER_H

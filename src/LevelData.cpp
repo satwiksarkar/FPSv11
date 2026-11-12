@@ -618,3 +618,10 @@ QVector3D LevelData::getLevel3CoreCenter()
 {
     return QVector3D(2000.0f, 200.0f, 2000.0f);
 }
+
+QList<DoorDef> LevelData::getLevelDoors(int level)
+{
+    Q_UNUSED(level);
+    // Maps are unchanged for Day 1; door layouts are populated in Day 3.
+    return {};
+}

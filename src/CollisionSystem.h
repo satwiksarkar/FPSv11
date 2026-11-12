@@ -52,6 +52,8 @@ public:
     /**
      * @brief Fast Digital Differential Analyzer (DDA) grid raycaster.
      * Steps tile-by-tile through the grid to test line-of-sight and shot occlusion.
+     * @param includeDoors When true (default), closed/blocking doors occlude the ray.
+     *                     When false, only permanent static geometry (walls/crates/core/pockets) occludes.
      */
     bool raycastDDA(LevelManager *levelManager,
                     const QVector3D &origin,
@@ -59,7 +61,8 @@ public:
                     float maxDist,
                     float &outDist,
                     QVector3D &outHitPos,
-                    int &outHitTile) const;
+                    int &outHitTile,
+                    bool includeDoors = true) const;
 
     /**
      * @brief Tests a ray against registered AABB boxes.

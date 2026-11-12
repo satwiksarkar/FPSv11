@@ -54,6 +54,16 @@ Window {
         }
     }
 
+    function playerLookDirection() {
+        var yawRad = (player.yaw * Math.PI) / 180.0
+        var pitchRad = (player.pitch * Math.PI) / 180.0
+        return Qt.vector3d(
+            Math.sin(yawRad) * Math.cos(pitchRad),
+            -Math.sin(pitchRad),
+            -Math.cos(yawRad) * Math.cos(pitchRad)
+        )
+    }
+
     // ==================== CAMPAIGN & LEVEL MANAGER ====================
     LevelManager {
         id: levelManager
@@ -79,6 +89,14 @@ Window {
                 playSound("enemy_hit")
             }
         }
+        onDoorTriggered: {
+            playSound("door")
+        }
+        onDoorInteractionFeedback: function(message, colorHex) {
+            root.hitNotificationText = message
+            root.hitNotificationColor = colorHex
+            hitNotificationTimer.restart()
+        }
     }
 
     // ==================== CORE GAME ENTITIES ====================
@@ -90,6 +108,7 @@ Window {
         onGameStateChanged: {
             if (!isPlaying) {
                 root.mouseLookActive = false
+                inputHandler.eKeyHeld = false
                 audioManager.stopAmbient()
             } else {
                 audioManager.playAmbient(levelManager.currentLevel)
@@ -575,6 +594,12 @@ Window {
             sniperWeapon.update(frameTime)
             heavyWeapon.update(frameTime)
             gameWorld.door.update(frameTime)
+            levelManager.updateDoors(frameTime,
+                                     player.position,
+                                     player.cameraPosition,
+                                     root.playerLookDirection(),
+                                     gameWorld.collisionSystem,
+                                     enemyManager)
             animationManager.update(frameTime)
 
             // Real-time FPS metric
@@ -1285,6 +1310,7 @@ Window {
         property bool moveBackward: false
         property bool moveLeft: false
         property bool moveRight: false
+        property bool eKeyHeld: false
 
         function syncMovement() {
             player.setMoveInput(moveForward, moveBackward, moveLeft, moveRight)
@@ -1324,6 +1350,12 @@ Window {
             else if (event.key === Qt.Key_1) player.useFoodPack()
             else if (event.key === Qt.Key_2) player.useBandage()
             else if (event.key === Qt.Key_3) player.useMedkit()
+            else if (event.key === Qt.Key_E) {
+                if (!event.isAutoRepeat && !eKeyHeld) {
+                    eKeyHeld = true
+                    levelManager.interactWithTargetDoor(player.position, enemyManager)
+                }
+            }
             else if (event.key === Qt.Key_F) {
                 root.flashlightActive = !root.flashlightActive
                 root.hitNotificationText = root.flashlightActive ? "TACTICAL FLASHLIGHT: [ENGAGED]" : "TACTICAL FLASHLIGHT: [DISABLED]"
@@ -1348,6 +1380,7 @@ Window {
             else if (event.key === Qt.Key_A) { moveLeft = false; syncMovement() }
             else if (event.key === Qt.Key_D) { moveRight = false; syncMovement() }
             else if (event.key === Qt.Key_Control || event.key === Qt.Key_C) player.setCrouch(false)
+            else if (event.key === Qt.Key_E && !event.isAutoRepeat) eKeyHeld = false
 
             event.accepted = true
         }
@@ -1381,13 +1414,7 @@ Window {
                 if (mouse.button === Qt.RightButton) {
                     root.activeWeapon.toggleAim()
                 } else if (mouse.button === Qt.LeftButton) {
-                    var yawRad = (player.yaw * Math.PI) / 180.0
-                    var pitchRad = (player.pitch * Math.PI) / 180.0
-                    var dir = Qt.vector3d(
-                        Math.sin(yawRad) * Math.cos(pitchRad),
-                        -Math.sin(pitchRad),
-                        -Math.cos(yawRad) * Math.cos(pitchRad)
-                    )
+                    var dir = root.playerLookDirection()
                     root.activeWeapon.shootAll(player.cameraPosition, dir, gameWorld, enemyManager, bossArena)
                 }
             }

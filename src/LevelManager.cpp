@@ -1,7 +1,12 @@
 ﻿#include "LevelManager.h"
 #include "GameConfig.h"
+#include "CollisionSystem.h"
+#include "EnemyManager.h"
+#include "Enemy.h"
 #include <QtMath>
 #include <QDebug>
+#include <algorithm>
+#include <cmath>
 
 LevelManager::LevelManager(QObject *parent)
     : QObject(parent)
@@ -82,6 +87,7 @@ void LevelManager::loadLevel(int levelIndex)
     }
 
     if (levelIndex > m_maxLevels) {
+        clearDoors();
         qDebug() << "[LevelManager] All campaign levels completed! Triggering campaign victory.";
         m_currentLevel = m_maxLevels + 1;
         emit currentLevelChanged(m_currentLevel);
@@ -91,6 +97,7 @@ void LevelManager::loadLevel(int levelIndex)
     }
 
     m_currentLevel = qBound(1, levelIndex, m_maxLevels);
+    rebuildDoorsForLevel(m_currentLevel);
     qDebug() << "[LevelManager] Loaded Level" << m_currentLevel << ":" << currentLevelName();
 
     // ==================== BFS REACHABILITY CHECK AT LOAD TIME ====================
@@ -129,10 +136,31 @@ int LevelManager::getTileAtWorldPos(float x, float z) const
     return getTile(row, col);
 }
 
-bool LevelManager::isSolidTile(int row, int col) const
+bool LevelManager::isStaticSolidTile(int row, int col) const
 {
     int tile = getTile(row, col);
-    return (tile == TileCode::Wall || tile == TileCode::Crate || tile == TileCode::CoreWall);
+    return (tile == TileCode::Wall ||
+            tile == TileCode::Crate ||
+            tile == TileCode::CoreWall ||
+            tile == TileCode::DoorPocket);
+}
+
+bool LevelManager::isSolidTile(int row, int col) const
+{
+    if (isStaticSolidTile(row, col)) {
+        return true;
+    }
+
+    if (Door *door = doorAtTile(row, col)) {
+        return door->isBlocking();
+    }
+
+    // Any TileCode::Door without an explicit Door instance defaults to solid/closed
+    if (getTile(row, col) == TileCode::Door) {
+        return true;
+    }
+
+    return false;
 }
 
 bool LevelManager::checkExitReached(const QVector3D &playerPos)
@@ -392,4 +420,403 @@ QVector3D LevelManager::droneSpawn(int index) const
         }
     }
     return QVector3D(0.0f, 0.0f, 0.0f);
+}
+
+// ==================== DOOR SYSTEM (DAY 1) ====================
+
+QVariantList LevelManager::doors() const
+{
+    QVariantList list;
+    list.reserve(m_doors.size());
+    for (Door *door : m_doors) {
+        list.append(QVariant::fromValue(door));
+    }
+    return list;
+}
+
+Door* LevelManager::targetDoor() const
+{
+    return m_targetDoor.data();
+}
+
+QString LevelManager::interactionPrompt() const
+{
+    return m_interactionPrompt;
+}
+
+int LevelManager::doorCount() const
+{
+    return m_doors.size();
+}
+
+Door* LevelManager::doorAt(int index) const
+{
+    if (index >= 0 && index < m_doors.size()) {
+        return m_doors[index];
+    }
+    return nullptr;
+}
+
+Door* LevelManager::doorAtTile(int row, int col) const
+{
+    if (row < 0 || row >= mapHeight() || col < 0 || col >= mapWidth()) {
+        return nullptr;
+    }
+    int key = row * mapWidth() + col;
+    return m_doorTileLookup.value(key, nullptr);
+}
+
+Door* LevelManager::addDoor(int row,
+                            int col,
+                            float axis,
+                            int doorType,
+                            int requiredKeyIndex,
+                            int requiredKeyCount,
+                            int requiredKeyMask,
+                            bool requiresBossDefeated,
+                            const QString &label)
+{
+    if (row < 0 || row >= mapHeight() || col < 0 || col >= mapWidth()) {
+        qWarning() << "[LevelManager] Ignoring out-of-bounds door at (" << row << "," << col << ")";
+        return nullptr;
+    }
+
+    int tileKey = row * mapWidth() + col;
+    if (m_doorTileLookup.contains(tileKey)) {
+        return m_doorTileLookup.value(tileKey);
+    }
+
+    Door *door = new Door(this);
+    int id = m_doors.size() + 1;
+    Door::DoorType typeEnum = static_cast<Door::DoorType>(qBound(0, doorType, 3));
+    door->configure(id,
+                    row,
+                    col,
+                    axis,
+                    typeEnum,
+                    requiredKeyIndex,
+                    requiredKeyCount,
+                    requiredKeyMask,
+                    requiresBossDefeated,
+                    label);
+
+    connect(door, &Door::doorAnimationStarted, this, [this](bool opening) {
+        Q_UNUSED(opening);
+        emit doorTriggered();
+    });
+
+    m_doors.append(door);
+    m_doorTileLookup.insert(tileKey, door);
+    emit doorsChanged();
+    return door;
+}
+
+void LevelManager::clearDoors()
+{
+    if (!m_targetDoor.isNull()) {
+        m_targetDoor.clear();
+        emit targetDoorChanged();
+    }
+    if (!m_interactionPrompt.isEmpty()) {
+        m_interactionPrompt.clear();
+        emit interactionPromptChanged();
+    }
+
+    m_doorTileLookup.clear();
+    if (!m_doors.isEmpty()) {
+        QList<Door*> oldDoors = m_doors;
+        m_doors.clear();
+        for (Door *door : oldDoors) {
+            if (door) {
+                door->deleteLater();
+            }
+        }
+        emit doorsChanged();
+    }
+}
+
+void LevelManager::rebuildDoorsForLevel(int level)
+{
+    clearDoors();
+
+    const QList<DoorDef> defs = LevelData::getLevelDoors(level);
+    for (const DoorDef &def : defs) {
+        Door *door = addDoor(def.row,
+                             def.col,
+                             def.axis,
+                             def.doorType,
+                             def.requiredKeyIndex,
+                             def.requiredKeyCount,
+                             def.requiredKeyMask,
+                             def.requiresBossDefeated,
+                             def.label);
+        if (door) {
+            Q_UNUSED(door);
+        }
+    }
+}
+
+bool LevelManager::isDoorTileObstructed(const Door *door,
+                                        const QVector3D &playerPos,
+                                        EnemyManager *enemyManager) const
+{
+    if (!door || door->row() < 0 || door->col() < 0) {
+        return false;
+    }
+
+    const float bs = GameConfig::BLOCK_SIZE;
+    const float bMinX = door->col() * bs;
+    const float bMaxX = (door->col() + 1) * bs;
+    const float bMinZ = door->row() * bs;
+    const float bMaxZ = (door->row() + 1) * bs;
+
+    // Entity radius (35.0) + small buffer (4.0) keeps entities clear of the closing door leaf plane
+    const float checkRadius = 39.0f;
+    const float checkRadiusSq = checkRadius * checkRadius;
+
+    auto overlapsDoor = [&](const QVector3D &pos) -> bool {
+        float cX = std::clamp(pos.x(), bMinX, bMaxX);
+        float cZ = std::clamp(pos.z(), bMinZ, bMaxZ);
+        float dx = pos.x() - cX;
+        float dz = pos.z() - cZ;
+        return (dx * dx + dz * dz) < checkRadiusSq;
+    };
+
+    if (overlapsDoor(playerPos)) {
+        return true;
+    }
+
+    if (enemyManager) {
+        int count = enemyManager->poolSize();
+        for (int i = 0; i < count; ++i) {
+            Enemy *enemy = enemyManager->enemyAt(i);
+            if (enemy && enemy->isActive() && !enemy->isDead()) {
+                if (overlapsDoor(enemy->position())) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool LevelManager::isRayOccludedBefore(const QVector3D &origin,
+                                       const QVector3D &normDir,
+                                       float targetDist,
+                                       CollisionSystem *collisionSystem) const
+{
+    if (!collisionSystem) {
+        return false;
+    }
+
+    float wallDist = 0.0f;
+    QVector3D wallHitPos;
+    int wallHitTile = TileCode::Empty;
+    if (!collisionSystem->raycastDDA(const_cast<LevelManager*>(this),
+                                     origin,
+                                     normDir,
+                                     targetDist,
+                                     wallDist,
+                                     wallHitPos,
+                                     wallHitTile,
+                                     false)) {
+        return false;
+    }
+
+    if (wallDist >= targetDist - 0.5f) {
+        return false;
+    }
+
+    // Crates only rise to CRATE_HEIGHT (200 units); allow aiming above them if unobstructed higher up
+    if (wallHitTile == TileCode::Crate && wallHitPos.y() > GameConfig::CRATE_HEIGHT) {
+        return false;
+    }
+
+    return true;
+}
+
+Door* LevelManager::findTargetDoor(const QVector3D &cameraPos,
+                                   const QVector3D &lookDir,
+                                   CollisionSystem *collisionSystem) const
+{
+    if (m_doors.isEmpty()) {
+        return nullptr;
+    }
+
+    QVector3D normDir = lookDir.normalized();
+    if (normDir.isNull()) {
+        return nullptr;
+    }
+
+    const float maxInteractionDist = 175.0f;
+    const float bs = GameConfig::BLOCK_SIZE;
+
+    Door *bestDoor = nullptr;
+    float bestDist = maxInteractionDist + 1.0f;
+
+    for (Door *door : m_doors) {
+        if (!door || door->row() < 0 || door->col() < 0) {
+            continue;
+        }
+
+        QVector3D bMin(door->col() * bs, 0.0f, door->row() * bs);
+        QVector3D bMax((door->col() + 1) * bs, GameConfig::WALL_HEIGHT, (door->row() + 1) * bs);
+
+        // Slab ray-vs-AABB intersection against full doorway aperture
+        float tMin = 0.0f;
+        float tMax = maxInteractionDist;
+        bool miss = false;
+
+        for (int axisIdx = 0; axisIdx < 3; ++axisIdx) {
+            float origComp = (axisIdx == 0) ? cameraPos.x() : ((axisIdx == 1) ? cameraPos.y() : cameraPos.z());
+            float dirComp  = (axisIdx == 0) ? normDir.x()   : ((axisIdx == 1) ? normDir.y()   : normDir.z());
+            float minB     = (axisIdx == 0) ? bMin.x()      : ((axisIdx == 1) ? bMin.y()      : bMin.z());
+            float maxB     = (axisIdx == 0) ? bMax.x()      : ((axisIdx == 1) ? bMax.y()      : bMax.z());
+
+            if (std::abs(dirComp) < 1e-6f) {
+                if (origComp < minB || origComp > maxB) {
+                    miss = true;
+                    break;
+                }
+            } else {
+                float invD = 1.0f / dirComp;
+                float t1 = (minB - origComp) * invD;
+                float t2 = (maxB - origComp) * invD;
+                if (t1 > t2) std::swap(t1, t2);
+                tMin = std::max(tMin, t1);
+                tMax = std::min(tMax, t2);
+                if (tMin > tMax) {
+                    miss = true;
+                    break;
+                }
+            }
+        }
+
+        if (miss || tMax < 0.0f) {
+            continue;
+        }
+
+        float hitDist = std::max(0.0f, tMin);
+        if (hitDist > maxInteractionDist || hitDist >= bestDist) {
+            continue;
+        }
+
+        if (isRayOccludedBefore(cameraPos, normDir, hitDist, collisionSystem)) {
+            continue;
+        }
+
+        bestDist = hitDist;
+        bestDoor = door;
+    }
+
+    return bestDoor;
+}
+
+QString LevelManager::buildDoorPrompt(const Door *door,
+                                      const QVector3D &playerPos,
+                                      EnemyManager *enemyManager) const
+{
+    if (!door) {
+        return QString();
+    }
+
+    switch (door->doorState()) {
+    case Door::DoorState::Locked:
+        return door->lockedReason();
+    case Door::DoorState::Closed:
+        return (door->doorType() == Door::DoorType::MainExit)
+            ? QStringLiteral("[E] OPEN EXIT DOOR")
+            : QStringLiteral("[E] OPEN DOOR");
+    case Door::DoorState::Open:
+        return isDoorTileObstructed(door, playerPos, enemyManager)
+            ? QStringLiteral("DOOR OBSTRUCTED")
+            : QStringLiteral("[E] CLOSE DOOR");
+    case Door::DoorState::Opening:
+    case Door::DoorState::Closing:
+        return QString();
+    }
+    return QString();
+}
+
+void LevelManager::updateInteractionPrompt(const QVector3D &playerPos, EnemyManager *enemyManager)
+{
+    QString nextPrompt = buildDoorPrompt(m_targetDoor.data(), playerPos, enemyManager);
+    if (m_interactionPrompt != nextPrompt) {
+        m_interactionPrompt = nextPrompt;
+        emit interactionPromptChanged();
+    }
+}
+
+void LevelManager::updateDoors(float deltaTime,
+                               const QVector3D &playerPos,
+                               const QVector3D &cameraPos,
+                               const QVector3D &lookDir,
+                               CollisionSystem *collisionSystem,
+                               EnemyManager *enemyManager)
+{
+    for (Door *door : m_doors) {
+        if (door) {
+            bool obstructed = (door->doorState() == Door::DoorState::Closing)
+                ? isDoorTileObstructed(door, playerPos, enemyManager)
+                : false;
+            door->update(deltaTime, obstructed);
+        }
+    }
+
+    Door *found = findTargetDoor(cameraPos, lookDir, collisionSystem);
+    if (m_targetDoor.data() != found) {
+        m_targetDoor = found;
+        emit targetDoorChanged();
+    }
+
+    updateInteractionPrompt(playerPos, enemyManager);
+}
+
+bool LevelManager::interactWithTargetDoor(const QVector3D &playerPos, EnemyManager *enemyManager)
+{
+    Door *door = m_targetDoor.data();
+    if (!door) {
+        return false;
+    }
+
+    // Prevent mid-animation conflicting inputs
+    if (door->doorState() == Door::DoorState::Opening ||
+        door->doorState() == Door::DoorState::Closing) {
+        return false;
+    }
+
+    if (door->doorState() == Door::DoorState::Locked) {
+        // Day 1 scope: Standard doors require no keys; Key/Area/MainExit doors wait for Day 2 four-key integration
+        bool accessGranted = (door->doorType() == Door::DoorType::Standard);
+        QString denyReason = door->lockedReason();
+        if (!accessGranted) {
+            bool ok = door->interact(false, denyReason, false);
+            Q_UNUSED(ok);
+            emit doorInteractionFeedback(door->lockedReason(), QStringLiteral("#e74c3c"));
+            updateInteractionPrompt(playerPos, enemyManager);
+            return false;
+        }
+        bool opened = door->interact(true, QString(), false);
+        updateInteractionPrompt(playerPos, enemyManager);
+        return opened;
+    }
+
+    if (door->doorState() == Door::DoorState::Open) {
+        bool obstructed = isDoorTileObstructed(door, playerPos, enemyManager);
+        if (obstructed) {
+            door->interact(true, QString(), true);
+            emit doorInteractionFeedback(QStringLiteral("DOOR OBSTRUCTED — CLEAR DOORWAY"), QStringLiteral("#e67e22"));
+            updateInteractionPrompt(playerPos, enemyManager);
+            return false;
+        }
+        bool closing = door->interact(true, QString(), false);
+        updateInteractionPrompt(playerPos, enemyManager);
+        return closing;
+    }
+
+    // Closed -> Opening
+    bool opening = door->interact(true, QString(), false);
+    updateInteractionPrompt(playerPos, enemyManager);
+    return opening;
 }
