@@ -261,8 +261,8 @@ bool LevelManager::isInLoadingBay(float x, float z) const
     int col = qFloor(x / GameConfig::BLOCK_SIZE);
     int row = qFloor(z / GameConfig::BLOCK_SIZE);
 
-    // Level 1 Loading Bay is at rows 6 to 15, cols 17 to 26
-    return (row >= 6 && row <= 15 && col >= 17 && col <= 26);
+    // Level 1 Loading Bay is at rows 7 to 15, cols 17 to 26
+    return (row >= 7 && row <= 15 && col >= 17 && col <= 26);
 }
 
 bool LevelManager::triggerLoadingBay()

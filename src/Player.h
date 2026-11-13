@@ -58,6 +58,8 @@ public:
     // Getters
     QVector3D position() const;
     QVector3D cameraPosition() const;
+    Q_INVOKABLE QVector3D eyePosition() const;
+    Q_INVOKABLE QVector3D lookDirection() const;
     QVector3D cameraRotation() const;
     float yaw() const;
     float pitch() const;

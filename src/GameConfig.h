@@ -55,7 +55,7 @@ namespace GameConfig {
     // === Enemy Archetypes: Drone (Melee Chaser) ===
     constexpr int DRONE_HEALTH = 40;                  // Fragile melee pursuer
     constexpr float DRONE_SPEED = 300.0f;             // ~3 blocks per second (3 * 100 units/s)
-    constexpr int DRONE_MELEE_DAMAGE = 10;            // Damage dealt per melee hit
+    constexpr int DRONE_MELEE_DAMAGE = 5;             // Damage dealt per melee hit (halved from 10)
     constexpr float DRONE_ATTACK_COOLDOWN = 1.0f;     // Attack frequency (every 1.0s)
     constexpr float DRONE_ATTACK_RANGE = 120.0f;      // ~1.2 blocks strike distance
 

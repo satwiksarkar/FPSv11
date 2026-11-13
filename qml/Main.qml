@@ -55,11 +55,14 @@ Window {
     }
 
     function playerLookDirection() {
+        if (player && typeof player.lookDirection === "function") {
+            return player.lookDirection()
+        }
         var yawRad = (player.yaw * Math.PI) / 180.0
         var pitchRad = (player.pitch * Math.PI) / 180.0
         return Qt.vector3d(
             Math.sin(yawRad) * Math.cos(pitchRad),
-            -Math.sin(pitchRad),
+            Math.sin(pitchRad),
             -Math.cos(yawRad) * Math.cos(pitchRad)
         )
     }

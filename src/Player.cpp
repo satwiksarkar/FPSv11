@@ -77,6 +77,22 @@ QVector3D Player::cameraPosition() const
     return QVector3D(m_position.x(), m_position.y() + m_currentEyeHeight, m_position.z());
 }
 
+QVector3D Player::eyePosition() const
+{
+    return cameraPosition();
+}
+
+QVector3D Player::lookDirection() const
+{
+    float yawRad = qDegreesToRadians(m_yaw);
+    float pitchRad = qDegreesToRadians(m_pitch);
+    return QVector3D(
+        qSin(yawRad) * qCos(pitchRad),
+        qSin(pitchRad),
+        -qCos(yawRad) * qCos(pitchRad)
+    );
+}
+
 QVector3D Player::cameraRotation() const
 {
     // Qt Quick 3D Euler angles: Pitch (X-axis tilt), -Yaw (Y-axis turn), Roll (0)
