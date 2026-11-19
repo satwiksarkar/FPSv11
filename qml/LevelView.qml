@@ -15,6 +15,7 @@ Node {
     property var levelManager: null
     property var bossArena: null
     property var animationManager: null
+    property var puzzleManager: null
     property real cameraYaw: 0.0
 
     readonly property real mapWidthUnits: levelManager ? levelManager.mapWidth * levelManager.blockSize : 1600.0
@@ -399,6 +400,222 @@ Node {
 
         AccessKeyModel {
             keyPickup: modelData
+        }
+    }
+
+    // ==================== LEVEL 1 INTERACTIVE PUZZLE CONSOLES & BARRIERS ====================
+    Node {
+        id: level1PuzzlesNode
+        visible: root.levelManager && root.levelManager.currentLevel === 1
+
+        // 1. Cargo Warehouse: Crane Control Console & Blocking Containers
+        Node {
+            id: cargoCraneGroup
+            Model {
+                position: Qt.vector3d(850, 45, 950)
+                source: "#Cube"
+                scale: Qt.vector3d(0.7, 0.9, 0.7)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.5; metalness: 0.8 } ]
+            }
+            Model {
+                position: Qt.vector3d(850, 95, 950)
+                source: "#Cube"
+                scale: Qt.vector3d(0.5, 0.35, 0.08)
+                materials: [ PrincipledMaterial {
+                    baseColor: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
+                    lighting: PrincipledMaterial.NoLighting
+                } ]
+            }
+            PointLight {
+                position: Qt.vector3d(850, 110, 950)
+                color: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
+                brightness: 3.5
+            }
+
+            // 3 Heavy Containers Blocking K1 Alcove (Row 6..7, Col 9)
+            Node {
+                property real hoistY: (root.puzzleManager && root.puzzleManager.craneSolved) ? 280.0 : 75.0
+                Behavior on hoistY { NumberAnimation { duration: 1500; easing.type: Easing.InOutQuad } }
+
+                position: Qt.vector3d(950, hoistY, 700)
+
+                Model {
+                    position: Qt.vector3d(0, 0, -45)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.9, 1.5, 0.8)
+                    materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.6 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 0, 45)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.9, 1.5, 0.8)
+                    materials: [ PrincipledMaterial { baseColor: "#2980b9"; roughness: 0.6 } ]
+                }
+            }
+        }
+
+        // 2. Research Laboratories: Power Routing Terminal & Containment Field
+        Node {
+            id: researchPowerGroup
+            Model {
+                position: Qt.vector3d(6250, 45, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(0.7, 0.9, 0.7)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.4; metalness: 0.7 } ]
+            }
+            Model {
+                position: Qt.vector3d(6250, 95, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(0.5, 0.35, 0.08)
+                materials: [ PrincipledMaterial {
+                    baseColor: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00e5ff"
+                    lighting: PrincipledMaterial.NoLighting
+                } ]
+            }
+            PointLight {
+                position: Qt.vector3d(6250, 110, 1050)
+                color: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00e5ff"
+                brightness: 3.5
+            }
+
+            // Containment Plasma Field across Row 10, Cols 64..65
+            Model {
+                visible: root.puzzleManager ? !root.puzzleManager.powerSolved : true
+                position: Qt.vector3d(6500, 150, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(1.8, 3.0, 0.15)
+                materials: [ PrincipledMaterial {
+                    baseColor: "#00e5ff"
+                    opacity: 0.55
+                    lighting: PrincipledMaterial.NoLighting
+                } ]
+            }
+            PointLight {
+                position: Qt.vector3d(6500, 150, 1050)
+                color: "#00e5ff"
+                brightness: 6.0
+                visible: root.puzzleManager ? !root.puzzleManager.powerSolved : true
+            }
+
+            // Activated Containment Ceiling Floodlight on success
+            PointLight {
+                position: Qt.vector3d(7100, 240, 750)
+                color: "#74b9ff"
+                brightness: 8.0
+                visible: root.puzzleManager && root.puzzleManager.powerSolved
+            }
+        }
+
+        // 3. Administration Block: Security Keypad & Supervisor Directive Desk & Laser Gate
+        Node {
+            id: adminSecurityGroup
+            Model {
+                position: Qt.vector3d(1550, 110, 7050)
+                source: "#Cube"
+                scale: Qt.vector3d(0.12, 0.45, 0.35)
+                materials: [ PrincipledMaterial {
+                    baseColor: (root.puzzleManager && root.puzzleManager.securitySolved) ? "#2ecc71" : "#e74c3c"
+                    lighting: PrincipledMaterial.NoLighting
+                } ]
+            }
+            PointLight {
+                position: Qt.vector3d(1530, 110, 7050)
+                color: (root.puzzleManager && root.puzzleManager.securitySolved) ? "#2ecc71" : "#e74c3c"
+                brightness: 3.0
+            }
+
+            // Supervisor Directive Desk at (850, 0, 6450)
+            Model {
+                position: Qt.vector3d(850, 35, 6450)
+                source: "#Cube"
+                scale: Qt.vector3d(1.2, 0.7, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.7 } ]
+            }
+            Model {
+                position: Qt.vector3d(850, 72, 6450)
+                source: "#Cube"
+                scale: Qt.vector3d(0.35, 0.05, 0.25)
+                materials: [ PrincipledMaterial { baseColor: "#f39c12"; lighting: PrincipledMaterial.NoLighting } ]
+            }
+            PointLight {
+                position: Qt.vector3d(850, 85, 6450)
+                color: "#f39c12"
+                brightness: 2.5
+            }
+
+            // Laser Gate Barrier across Row 70, Cols 12..13
+            Model {
+                visible: root.puzzleManager ? !root.puzzleManager.securitySolved : true
+                position: Qt.vector3d(1300, 150, 7050)
+                source: "#Cube"
+                scale: Qt.vector3d(1.8, 3.0, 0.15)
+                materials: [ PrincipledMaterial {
+                    baseColor: "#e74c3c"
+                    opacity: 0.65
+                    lighting: PrincipledMaterial.NoLighting
+                } ]
+            }
+            PointLight {
+                position: Qt.vector3d(1300, 150, 7050)
+                color: "#e74c3c"
+                brightness: 5.0
+                visible: root.puzzleManager ? !root.puzzleManager.securitySolved : true
+            }
+        }
+
+        // 4. Maintenance & Utilities: Coolant Valve Manifold & Substation Interlock Gate
+        Node {
+            id: maintenanceCoolantGroup
+            Model {
+                position: Qt.vector3d(6250, 45, 6650)
+                source: "#Cube"
+                scale: Qt.vector3d(1.1, 0.9, 0.7)
+                materials: [ PrincipledMaterial { baseColor: "#2d3436"; roughness: 0.6; metalness: 0.8 } ]
+            }
+            Model {
+                position: Qt.vector3d(6210, 95, 6650)
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.18, 0.12, 0.18)
+                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
+            }
+            Model {
+                position: Qt.vector3d(6250, 95, 6650)
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.18, 0.12, 0.18)
+                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
+            }
+            Model {
+                position: Qt.vector3d(6290, 95, 6650)
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.18, 0.12, 0.18)
+                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
+            }
+            PointLight {
+                position: Qt.vector3d(6250, 120, 6650)
+                color: (root.puzzleManager && root.puzzleManager.coolantSolved) ? "#f1c40f" : "#e67e22"
+                brightness: 3.5
+            }
+
+            // Substation Interlock Gate at Row 72, Col 68
+            Model {
+                visible: root.puzzleManager ? !root.puzzleManager.coolantSolved : true
+                position: Qt.vector3d(6850, 150, 7250)
+                source: "#Cube"
+                scale: Qt.vector3d(0.2, 3.0, 1.0)
+                materials: [ PrincipledMaterial {
+                    baseColor: "#f39c12"
+                    roughness: 0.5
+                    metalness: 0.8
+                } ]
+            }
+
+            // Backup Generator Turbine Floodlight on success
+            PointLight {
+                position: Qt.vector3d(7100, 250, 7200)
+                color: "#ffeaa7"
+                brightness: 9.0
+                visible: root.puzzleManager && root.puzzleManager.coolantSolved
+            }
         }
     }
 }

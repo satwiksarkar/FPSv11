@@ -14,6 +14,7 @@
 #include "LevelData.h"
 #include "Door.h"
 #include "AccessKeyPickup.h"
+#include "PuzzleManager.h"
 
 class BossArena;
 class CollisionSystem;
@@ -57,6 +58,7 @@ class LevelManager : public QObject
     Q_PROPERTY(bool bossCompleted READ isBossCompleted NOTIFY missionProgressChanged)
     Q_PROPERTY(int activeVentsRemaining READ activeVentsRemaining NOTIFY missionProgressChanged)
     Q_PROPERTY(bool extractionAvailable READ isExtractionAvailable NOTIFY missionProgressChanged)
+    Q_PROPERTY(PuzzleManager* puzzleManager READ puzzleManager WRITE setPuzzleManager NOTIFY puzzleManagerChanged)
 
 public:
     explicit LevelManager(QObject *parent = nullptr);
@@ -89,6 +91,8 @@ public:
     QVariantList levelKeys() const;
     BossArena* bossArena() const;
     void setBossArena(BossArena *arena);
+    PuzzleManager* puzzleManager() const;
+    void setPuzzleManager(PuzzleManager *pm);
     bool isBossCompleted() const;
     int activeVentsRemaining() const;
     bool isExtractionAvailable() const;
@@ -196,6 +200,7 @@ signals:
     void keyCollected(int keyIndex, const QString &keyName, int collectedCount, int totalRequired);
     void levelKeysChanged();
     void bossArenaChanged();
+    void puzzleManagerChanged();
     void missionProgressChanged();
 
 private:
@@ -230,6 +235,7 @@ private:
     std::array<int, 4> m_keyMasks;
     QList<AccessKeyPickup*> m_levelKeys;
     QPointer<BossArena> m_bossArena;
+    QPointer<PuzzleManager> m_puzzleManager;
     QMetaObject::Connection m_ventsConn;
     QMetaObject::Connection m_bossConn;
     bool m_bossCompleted;

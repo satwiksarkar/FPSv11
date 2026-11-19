@@ -56,7 +56,7 @@ struct KeyDef {
 class LevelData
 {
 public:
-    static constexpr int LEVEL1_SIZE = 32;
+    static constexpr int LEVEL1_SIZE = 80;
     static constexpr int LEVEL2_SIZE = 64;
     static constexpr int LEVEL3_SIZE = 40;
     static constexpr int TEST_MAP_SIZE = 16;

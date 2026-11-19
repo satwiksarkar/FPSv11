@@ -33,6 +33,11 @@ qt_add_qml_module(FPSLabGame
         qml/VentModel.qml
         qml/DoorModel.qml
         qml/AccessKeyModel.qml
+        qml/CraneControlPanel.qml
+        qml/CircuitPuzzle.qml
+        qml/SecurityTerminal.qml
+        qml/CoolantControlPanel.qml
+        qml/AdminClueDialog.qml
     RESOURCES
         qml/dark_hallway.frag
         qml/dark_hallway.vert
@@ -90,6 +95,8 @@ qt_add_qml_module(FPSLabGame
         src/Pickup.cpp
         src/AccessKeyPickup.h
         src/AccessKeyPickup.cpp
+        src/PuzzleManager.h
+        src/PuzzleManager.cpp
         src/Door.h
         src/Door.cpp
         src/CollisionSystem.h

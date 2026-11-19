@@ -1,5 +1,6 @@
 #include "LevelManager.h"
 #include "BossArena.h"
+#include "PuzzleManager.h"
 #include "GameConfig.h"
 #include "CollisionSystem.h"
 #include "EnemyManager.h"
@@ -184,6 +185,26 @@ bool LevelManager::isSolidTile(int row, int col) const
         return true;
     }
 
+    // Level 1: Dynamic chamber barriers governed by PuzzleManager
+    if (m_currentLevel == 1 && m_puzzleManager) {
+        // Cargo barrier: row 6..7, col 9
+        if (m_puzzleManager->isBarrierBlocking(1) && (row == 6 || row == 7) && col == 9) {
+            return true;
+        }
+        // Research barrier: row 10, cols 64..65
+        if (m_puzzleManager->isBarrierBlocking(2) && row == 10 && (col == 64 || col == 65)) {
+            return true;
+        }
+        // Admin barrier: row 70, cols 12..13
+        if (m_puzzleManager->isBarrierBlocking(3) && row == 70 && (col == 12 || col == 13)) {
+            return true;
+        }
+        // Maintenance barrier: row 72, col 68
+        if (m_puzzleManager->isBarrierBlocking(4) && row == 72 && col == 68) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -261,8 +282,8 @@ bool LevelManager::isInLoadingBay(float x, float z) const
     int col = qFloor(x / GameConfig::BLOCK_SIZE);
     int row = qFloor(z / GameConfig::BLOCK_SIZE);
 
-    // Level 1 Loading Bay is at rows 7 to 15, cols 17 to 26
-    return (row >= 7 && row <= 15 && col >= 17 && col <= 26);
+    // Level 1 Cargo Warehouse (Loading Bay) is at rows 4 to 24, cols 4 to 25
+    return (row >= 4 && row <= 24 && col >= 4 && col <= 25);
 }
 
 bool LevelManager::triggerLoadingBay()
@@ -1102,6 +1123,19 @@ void LevelManager::setBossArena(BossArena *arena)
     emit bossArenaChanged();
 }
 
+PuzzleManager* LevelManager::puzzleManager() const
+{
+    return m_puzzleManager.data();
+}
+
+void LevelManager::setPuzzleManager(PuzzleManager *pm)
+{
+    if (m_puzzleManager.data() != pm) {
+        m_puzzleManager = pm;
+        emit puzzleManagerChanged();
+    }
+}
+
 bool LevelManager::isBossCompleted() const
 {
     return m_bossCompleted;
@@ -1302,6 +1336,13 @@ void LevelManager::updateKeys(float deltaTime, const QVector3D &playerPos, bool 
             continue;
         }
         pickup->update(deltaTime);
+        if (m_currentLevel == 1 && m_puzzleManager) {
+            // Guard key collection on Level 1 until corresponding puzzle is solved
+            if (pickup->keyIndex() == 0 && !m_puzzleManager->isCoolantSolved()) continue;
+            if (pickup->keyIndex() == 1 && !m_puzzleManager->isCraneSolved()) continue;
+            if (pickup->keyIndex() == 2 && !m_puzzleManager->isPowerSolved()) continue;
+            if (pickup->keyIndex() == 3 && !m_puzzleManager->isSecuritySolved()) continue;
+        }
         if (playerAlive && pickup->isPlayerInRange(playerPos, playerAlive)) {
             collectKey(pickup->keyIndex(), playerAlive);
         }

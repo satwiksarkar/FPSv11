@@ -67,10 +67,25 @@ Window {
         )
     }
 
+    // ==================== LEVEL 1 PUZZLE MANAGER ====================
+    PuzzleManager {
+        id: puzzleManager
+        onPuzzleCompleted: function(puzzleId, name) {
+            console.log("[Main] Puzzle completed:", puzzleId, name)
+            playSound("pickup")
+        }
+        onPuzzleFeedback: function(message, colorHex) {
+            root.hitNotificationText = message
+            root.hitNotificationColor = colorHex
+            hitNotificationTimer.restart()
+        }
+    }
+
     // ==================== CAMPAIGN & LEVEL MANAGER ====================
     LevelManager {
         id: levelManager
         bossArena: bossArena
+        puzzleManager: puzzleManager
         onExitReached: function(nextLevel) {
             console.log("[Main] Exit tile reached. Advancing to Level:", nextLevel)
             playSound("level_clear")
@@ -491,6 +506,11 @@ Window {
         } else {
             audioManager.stopAmbient()
         }
+        if (lvl === 1) {
+            puzzleManager.resetAllPuzzles()
+        } else {
+            puzzleManager.closeActivePuzzle()
+        }
         root.enemySpawnCountdown = 2.0
         root.enemiesSpawnedForLevel = false
     }
@@ -498,6 +518,7 @@ Window {
     function startNewCampaign(startLvl) {
         var targetLvl = (startLvl && startLvl > 0) ? startLvl : 1
         levelManager.resetAllCampaignKeys()
+        puzzleManager.resetAllPuzzles()
         setupLevel(targetLvl, false)
         gameManager.startGame()
     }
@@ -506,6 +527,9 @@ Window {
         var lvl = (levelManager.currentLevel >= 1 && levelManager.currentLevel <= 3)
             ? levelManager.currentLevel : 1
         levelManager.resetMissionKeys(lvl)
+        if (lvl === 1) {
+            puzzleManager.resetAllPuzzles()
+        }
         setupLevel(lvl, false)
         gameManager.restartCurrentLevel()
         audioManager.playAmbient(lvl)
@@ -625,6 +649,11 @@ Window {
                                      gameWorld.collisionSystem,
                                      enemyManager,
                                      !player.isDead)
+            puzzleManager.updateInteraction(frameTime,
+                                           player.cameraPosition,
+                                           root.playerLookDirection(),
+                                           levelManager.currentLevel,
+                                           !player.isDead)
             animationManager.update(frameTime)
 
             // Real-time FPS metric
@@ -1181,6 +1210,7 @@ Window {
         LevelView {
             id: levelView
             levelManager: levelManager
+            puzzleManager: puzzleManager
             bossArena: bossArena
             animationManager: animationManager
             cameraYaw: root.frameCameraYaw
@@ -1343,6 +1373,12 @@ Window {
 
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape) {
+                if (puzzleManager.activePuzzle > 0) {
+                    puzzleManager.closeActivePuzzle()
+                    root.mouseLookActive = true
+                    event.accepted = true
+                    return
+                }
                 if (gameManager.isPlaying) {
                     gameManager.pauseGame()
                 } else if (gameManager.isPaused) {
@@ -1378,7 +1414,21 @@ Window {
             else if (event.key === Qt.Key_E) {
                 if (!event.isAutoRepeat && !eKeyHeld) {
                     eKeyHeld = true
-                    levelManager.interactWithTargetDoor(player.position, enemyManager, !player.isDead)
+                    if (puzzleManager.activePuzzle > 0) {
+                        puzzleManager.closeActivePuzzle()
+                        root.mouseLookActive = true
+                    } else if (puzzleManager.targetPuzzleId > 0) {
+                        if (puzzleManager.interact(player.position, levelManager.currentLevel, !player.isDead)) {
+                            root.mouseLookActive = false
+                            moveForward = false
+                            moveBackward = false
+                            moveLeft = false
+                            moveRight = false
+                            syncMovement()
+                        }
+                    } else {
+                        levelManager.interactWithTargetDoor(player.position, enemyManager, !player.isDead)
+                    }
                 }
             }
             else if (event.key === Qt.Key_F) {
@@ -1422,13 +1472,13 @@ Window {
             property bool firstMove: true
 
             onWheel: function(wheel) {
-                if (gameManager.isPlaying) {
+                if (gameManager.isPlaying && puzzleManager.activePuzzle === 0) {
                     player.switchWeapon()
                 }
             }
 
             onPressed: function(mouse) {
-                if (!gameManager.isPlaying) return
+                if (!gameManager.isPlaying || puzzleManager.activePuzzle > 0) return
 
                 if (!root.mouseLookActive) {
                     root.mouseLookActive = true
@@ -1536,7 +1586,67 @@ Window {
         healFlashIntensity: animationManager.healFlash
         flashlightActive: root.flashlightActive
         hallwayDarknessActive: root.hallwayDarknessActive
-        interactionPrompt: levelManager.interactionPrompt
+        interactionPrompt: (puzzleManager.interactionPrompt.length > 0) ? puzzleManager.interactionPrompt : levelManager.interactionPrompt
+    }
+
+    // ==================== LEVEL 1 INTERACTIVE PUZZLE OVERLAYS ====================
+    CraneControlPanel {
+        anchors.centerIn: parent
+        visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleCrane
+        puzzleManager: puzzleManager
+        onCloseRequested: {
+            puzzleManager.closeActivePuzzle()
+            root.mouseLookActive = true
+            inputHandler.forceActiveFocus()
+        }
+        z: 100
+    }
+
+    CircuitPuzzle {
+        anchors.centerIn: parent
+        visible: puzzleManager.activePuzzle === PuzzleManager.PuzzlePower
+        puzzleManager: puzzleManager
+        onCloseRequested: {
+            puzzleManager.closeActivePuzzle()
+            root.mouseLookActive = true
+            inputHandler.forceActiveFocus()
+        }
+        z: 100
+    }
+
+    SecurityTerminal {
+        anchors.centerIn: parent
+        visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleSecurity
+        puzzleManager: puzzleManager
+        onCloseRequested: {
+            puzzleManager.closeActivePuzzle()
+            root.mouseLookActive = true
+            inputHandler.forceActiveFocus()
+        }
+        z: 100
+    }
+
+    CoolantControlPanel {
+        anchors.centerIn: parent
+        visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleCoolant
+        puzzleManager: puzzleManager
+        onCloseRequested: {
+            puzzleManager.closeActivePuzzle()
+            root.mouseLookActive = true
+            inputHandler.forceActiveFocus()
+        }
+        z: 100
+    }
+
+    AdminClueDialog {
+        anchors.centerIn: parent
+        visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleAdminClue
+        onCloseRequested: {
+            puzzleManager.closeActivePuzzle()
+            root.mouseLookActive = true
+            inputHandler.forceActiveFocus()
+        }
+        z: 100
     }
 
     // ==================== STORY SCREEN (STAGE V2) ====================
