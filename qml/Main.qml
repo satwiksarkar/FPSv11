@@ -625,6 +625,72 @@ Window {
     property int fpsFrameCount: 0
     property real frameCameraYaw: 0.0
 
+    // ==================== ENVIRONMENTAL HAZARD: GAS LEAK ====================
+    readonly property bool gasLeakActive: levelManager ? levelManager.gasLeakActive : false
+    readonly property string gasLeakSectorName: levelManager ? levelManager.gasLeakRoomName : ""
+    readonly property real gasLeakRemainingSeconds: levelManager ? levelManager.gasLeakTimeRemaining : 0.0
+    readonly property int gasLeakRepairStage: levelManager ? levelManager.gasLeakRepairStage : 0
+    property bool playerInGasZone: false
+
+    Connections {
+        target: levelManager
+        function onGasEmergencyTriggered() {
+            playSound("enemy_gunshot")
+            root.hitNotificationText = "CRITICAL BIOHAZARD ALERT: TOXIC ATMOSPHERE IN " + levelManager.gasLeakRoomName + "!"
+            root.hitNotificationColor = "#e74c3c"
+            hitNotificationTimer.restart()
+        }
+        function onGasEmergencyResolved() {
+            gameManager.addScore(100)
+            playSound("level_clear")
+            root.hitNotificationText = "EMERGENCY VENTILATION PURGE: Toxic gas neutralized! (+100 PTS)"
+            root.hitNotificationColor = "#2ecc71"
+            hitNotificationTimer.restart()
+        }
+        function onGasEmergencyFatal() {
+            playSound("enemy_hit")
+            root.hitNotificationText = "LETHAL SATURATION: Atmospheric failure - Squad lost!"
+            root.hitNotificationColor = "#ff0000"
+            hitNotificationTimer.restart()
+        }
+    }
+
+    // ==================== DYNAMIC BOT REINFORCEMENT SPAWNER (LEVEL 1) ====================
+    Timer {
+        id: level1DroneRespawnTimer
+        interval: 16000
+        running: gameManager.isPlaying && levelManager.currentLevel === 1
+        repeat: true
+        onTriggered: {
+            if (enemyManager.activeCount < 4) {
+                var pPos = player.position
+                var spawns = [
+                    Qt.vector3d(3950, 0, 5650),
+                    Qt.vector3d(6250, 0, 2650),
+                    Qt.vector3d(1850, 0, 2650),
+                    Qt.vector3d(6850, 0, 6450),
+                    Qt.vector3d(2450, 0, 1850)
+                ]
+                var spawned = 0
+                for (var i = 0; i < spawns.length && spawned < 3; ++i) {
+                    var sp = spawns[i]
+                    var dx = sp.x - pPos.x
+                    var dz = sp.z - pPos.z
+                    if (dx * dx + dz * dz > 1400 * 1400) {
+                        enemyManager.spawnDrone(sp)
+                        spawned++
+                    }
+                }
+                if (spawned > 0) {
+                    playSound("enemy_gunshot")
+                    root.hitNotificationText = "SECURITY ALERT: Defense grid deployed " + spawned + " reinforcement drones!"
+                    root.hitNotificationColor = "#e67e22"
+                    hitNotificationTimer.restart()
+                }
+            }
+        }
+    }
+
     // ==================== HALLWAY SHADER & FLASHLIGHT CONTROLS ====================
     property bool flashlightActive: true
     property bool hallwayDarknessActive: true
@@ -637,10 +703,21 @@ Window {
         onTriggered: {
             root.frameCameraYaw = mainCamera.eulerRotation.y
 
+            // Check player in gas leak hazard zone
+            if (root.gasLeakActive) {
+                var px = player.position.x
+                var pz = player.position.z
+                root.playerInGasZone = (px >= root.gasLeakMinX && px <= root.gasLeakMaxX &&
+                                        pz >= root.gasLeakMinZ && pz <= root.gasLeakMaxZ)
+            } else {
+                root.playerInGasZone = false
+            }
+
             player.update(frameTime)
             sniperWeapon.update(frameTime)
             heavyWeapon.update(frameTime)
             gameWorld.door.update(frameTime)
+            levelManager.updateGasEmergency(frameTime, player)
             levelManager.updateKeys(frameTime, player.position, !player.isDead)
             levelManager.updateDoors(frameTime,
                                      player.position,
@@ -1214,6 +1291,8 @@ Window {
             bossArena: bossArena
             animationManager: animationManager
             cameraYaw: root.frameCameraYaw
+            gasLeakActive: root.gasLeakActive
+            gasLeakSector: root.gasLeakSector
         }
 
         // ==================== 3D BULLET TRACERS (Stage V8) ====================
@@ -1405,6 +1484,7 @@ Window {
             else if (event.key === Qt.Key_A) { moveLeft = true; syncMovement() }
             else if (event.key === Qt.Key_D) { moveRight = true; syncMovement() }
             else if (event.key === Qt.Key_Space) player.jump()
+            else if (event.key === Qt.Key_Shift) player.setSprint(true)
             else if (event.key === Qt.Key_Control || event.key === Qt.Key_C) player.setCrouch(true)
             else if (event.key === Qt.Key_Q) player.switchWeapon()
             else if (event.key === Qt.Key_R) root.activeWeapon.reload()
@@ -1414,6 +1494,15 @@ Window {
             else if (event.key === Qt.Key_E) {
                 if (!event.isAutoRepeat && !eKeyHeld) {
                     eKeyHeld = true
+                    if (levelManager.gasLeakActive) {
+                        var gPos = levelManager.gasStationPosition
+                        var distG = Math.hypot(player.position.x - gPos.x, player.position.z - gPos.z)
+                        if (distG < 250.0) {
+                            levelManager.interactGasStation(player.position)
+                            event.accepted = true
+                            return
+                        }
+                    }
                     if (puzzleManager.activePuzzle > 0) {
                         puzzleManager.closeActivePuzzle()
                         root.mouseLookActive = true
@@ -1443,6 +1532,12 @@ Window {
                 root.hitNotificationColor = root.hallwayDarknessActive ? "#2ecc71" : "#e67e22"
                 hitNotificationTimer.restart()
             }
+            else if (event.key === Qt.Key_M) {
+                hud.toggleMinimap()
+            }
+            else if (event.key === Qt.Key_N) {
+                hud.toggleNotebook()
+            }
 
             event.accepted = true
         }
@@ -1454,6 +1549,7 @@ Window {
             else if (event.key === Qt.Key_S) { moveBackward = false; syncMovement() }
             else if (event.key === Qt.Key_A) { moveLeft = false; syncMovement() }
             else if (event.key === Qt.Key_D) { moveRight = false; syncMovement() }
+            else if (event.key === Qt.Key_Shift) player.setSprint(false)
             else if (event.key === Qt.Key_Control || event.key === Qt.Key_C) player.setCrouch(false)
             else if (event.key === Qt.Key_E && !event.isAutoRepeat) eKeyHeld = false
 
@@ -1586,11 +1682,33 @@ Window {
         healFlashIntensity: animationManager.healFlash
         flashlightActive: root.flashlightActive
         hallwayDarknessActive: root.hallwayDarknessActive
-        interactionPrompt: (puzzleManager.interactionPrompt.length > 0) ? puzzleManager.interactionPrompt : levelManager.interactionPrompt
+        interactionPrompt: {
+            if (levelManager && levelManager.gasLeakActive) {
+                var gPos = levelManager.gasStationPosition
+                if (Math.hypot(player.position.x - gPos.x, player.position.z - gPos.z) < 250.0) {
+                    var st = levelManager.gasLeakRepairStage
+                    if (st === 0) return "[E] SHUT OFF MAIN ISOLATION VALVE (1/3)"
+                    if (st === 1) return "[E] PURGE GAS CONDUITS (2/3)"
+                    return "[E] ENGAGE SCRUBBERS & SEAL HATCH (3/3)"
+                }
+            }
+            return (puzzleManager.interactionPrompt.length > 0) ? puzzleManager.interactionPrompt : levelManager.interactionPrompt
+        }
+
+        gasLeakActive: levelManager ? levelManager.gasLeakActive : false
+        playerInGasZone: root.playerInGasZone
+        gasLeakSectorName: levelManager ? levelManager.gasLeakRoomName : ""
+        gasLeakRemainingSeconds: levelManager ? Math.ceil(levelManager.gasLeakTimeRemaining) : 0
+        gasLeakRepairStage: levelManager ? levelManager.gasLeakRepairStage : 0
+
+        levelManagerRef: levelManager
+        playerRef: player
+        puzzleManagerRef: puzzleManager
+        enemyManagerRef: enemyManager
     }
 
     // ==================== LEVEL 1 INTERACTIVE PUZZLE OVERLAYS ====================
-    CraneControlPanel {
+    CargoManifestPanel {
         anchors.centerIn: parent
         visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleCrane
         puzzleManager: puzzleManager
@@ -1641,6 +1759,7 @@ Window {
     AdminClueDialog {
         anchors.centerIn: parent
         visible: puzzleManager.activePuzzle === PuzzleManager.PuzzleAdminClue
+        puzzleManager: puzzleManager
         onCloseRequested: {
             puzzleManager.closeActivePuzzle()
             root.mouseLookActive = true

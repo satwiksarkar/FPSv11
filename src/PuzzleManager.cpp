@@ -48,8 +48,20 @@ PuzzleManager::PuzzleManager(QObject *parent)
     , m_powerSolved(false)
     , m_securitySolved(false)
     , m_coolantSolved(false)
+    , m_level1Variant(1)
     , m_activePuzzle(0)
     , m_targetPuzzleId(0)
+    , m_selectedRiddleOption(-1)
+    , m_manifestAlpha(0)
+    , m_manifestBeta(0)
+    , m_manifestGamma(0)
+    , m_fuseCollected(false)
+    , m_fuseInserted(false)
+    , m_clue1Found(false)
+    , m_clue2Found(false)
+    , m_clue3Found(false)
+    , m_manifestClueFound(false)
+    , m_activeClueIndex(1)
     , m_craneGrabbed(0)
     , m_craneSelectedBay(0)
     , m_securityErrorFlash(false)
@@ -168,27 +180,47 @@ int PuzzleManager::findTargetInteractable(const QVector3D &cameraPos, const QVec
         return PuzzleNone;
     }
 
-    // Positions of the 5 interactive entities in Level 1:
+    // Positions of the interactive entities in Level 1:
     struct TargetDef {
         int id;
         QVector3D pos;
         float radius;
     };
 
-    const TargetDef targets[] = {
-        { PuzzleCrane,      QVector3D(850.0f,  0.0f,  950.0f), 180.0f }, // Crane Console
-        { PuzzlePower,      QVector3D(6250.0f, 0.0f, 1050.0f), 180.0f }, // Power Routing Terminal
-        { PuzzleSecurity,   QVector3D(1550.0f, 0.0f, 7050.0f), 180.0f }, // Security Keypad
-        { PuzzleAdminClue,  QVector3D(850.0f,  0.0f, 6450.0f), 180.0f }, // Supervisor Directive Desk
-        { PuzzleCoolant,    QVector3D(6250.0f, 0.0f, 6650.0f), 180.0f }  // Coolant Valve Manifold
+    const TargetDef targetsV1[] = {
+        { PuzzleCrane,        QVector3D(1050.0f, 0.0f, 1050.0f), 180.0f },
+        { PuzzleManifestClue, QVector3D(1050.0f, 0.0f, 2750.0f), 180.0f },
+        { PuzzlePower,        QVector3D(3550.0f, 0.0f,  950.0f), 180.0f },
+        { PuzzleResearchFuse, QVector3D(3550.0f, 0.0f, 1650.0f), 180.0f },
+        { PuzzleSecurity,     QVector3D(1350.0f, 0.0f, 3950.0f), 180.0f },
+        { PuzzleAdminClue,    QVector3D( 850.0f, 0.0f, 3150.0f), 180.0f },
+        { PuzzleAdminClue2,   QVector3D(1250.0f, 0.0f, 3550.0f), 180.0f },
+        { PuzzleAdminClue3,   QVector3D(1550.0f, 0.0f, 3050.0f), 180.0f },
+        { PuzzleCoolant,      QVector3D(3850.0f, 0.0f, 3150.0f), 180.0f }
     };
+
+    const TargetDef targetsV2[] = {
+        { PuzzleCrane,        QVector3D( 850.0f, 0.0f,  950.0f), 180.0f },
+        { PuzzleManifestClue, QVector3D(2450.0f, 0.0f, 5650.0f), 180.0f },
+        { PuzzlePower,        QVector3D(6250.0f, 0.0f, 1050.0f), 180.0f },
+        { PuzzleResearchFuse, QVector3D(6050.0f, 0.0f, 1850.0f), 180.0f },
+        { PuzzleSecurity,     QVector3D(1550.0f, 0.0f, 7050.0f), 180.0f },
+        { PuzzleAdminClue,    QVector3D(1050.0f, 0.0f, 5750.0f), 180.0f },
+        { PuzzleAdminClue2,   QVector3D( 850.0f, 0.0f, 6450.0f), 180.0f },
+        { PuzzleAdminClue3,   QVector3D(2050.0f, 0.0f, 6750.0f), 180.0f },
+        { PuzzleCoolant,      QVector3D(6250.0f, 0.0f, 6650.0f), 180.0f }
+    };
+
+    const TargetDef *targets = (m_level1Variant == 2) ? targetsV2 : targetsV1;
+    const int targetCount = (m_level1Variant == 2) ? sizeof(targetsV2)/sizeof(targetsV2[0]) : sizeof(targetsV1)/sizeof(targetsV1[0]);
 
     QVector3D normDir = lookDir.normalized();
     float bestDot = 0.65f; // Must look within ~50 degrees
     int bestId = PuzzleNone;
     float bestDist = 250.0f; // Max interaction distance
 
-    for (const auto &t : targets) {
+    for (int i = 0; i < targetCount; ++i) {
+        const auto &t = targets[i];
         QVector3D toTarget = t.pos - cameraPos;
         toTarget.setY(0.0f); // Horizontal plane raycast
         float dist = toTarget.length();
@@ -235,19 +267,32 @@ void PuzzleManager::updateInteraction(float deltaTime,
 
         switch (m_targetPuzzleId) {
         case PuzzleCrane:
-            m_interactionPrompt = m_craneSolved ? QStringLiteral("[E] CRANE CONTROLS [ALIGNED]")
-                                                : QStringLiteral("[E] OPERATE CRANE CONSOLE");
+            m_interactionPrompt = m_craneSolved ? QStringLiteral("[E] SECURITY RIDDLE [SOLVED]")
+                                                : QStringLiteral("[E] ACCESS SECURITY RIDDLE TERMINAL");
+            break;
+        case PuzzleManifestClue:
+            m_interactionPrompt = QStringLiteral("[E] READ LOGISTICS MEMO #402-V (RIDDLE CLUE)");
             break;
         case PuzzlePower:
             m_interactionPrompt = m_powerSolved ? QStringLiteral("[E] POWER ROUTING [ONLINE]")
                                                 : QStringLiteral("[E] ACCESS POWER ROUTING TERMINAL");
+            break;
+        case PuzzleResearchFuse:
+            m_interactionPrompt = m_fuseCollected ? QStringLiteral("200A FUSE [ACQUIRED]")
+                                                  : QStringLiteral("[E] TAKE 200A CERAMIC FUSE");
             break;
         case PuzzleSecurity:
             m_interactionPrompt = m_securitySolved ? QStringLiteral("[E] SECURITY TERMINAL [UNLOCKED]")
                                                    : QStringLiteral("[E] ENTER VAULT PASSCODE");
             break;
         case PuzzleAdminClue:
-            m_interactionPrompt = QStringLiteral("[E] READ SUPERVISOR DIRECTIVE MEMO");
+            m_interactionPrompt = QStringLiteral("[E] READ RECEPTION MEMO (CLUE 1/3)");
+            break;
+        case PuzzleAdminClue2:
+            m_interactionPrompt = QStringLiteral("[E] READ SUPERVISOR DIRECTIVE (CLUE 2/3)");
+            break;
+        case PuzzleAdminClue3:
+            m_interactionPrompt = QStringLiteral("[E] ACCESS ARCHIVE LOG (CLUE 3/3)");
             break;
         case PuzzleCoolant:
             m_interactionPrompt = m_coolantSolved ? QStringLiteral("[E] COOLANT MANIFOLD [STABILIZED]")
@@ -268,6 +313,40 @@ bool PuzzleManager::interact(const QVector3D &playerPos, int currentLevel, bool 
         return false;
     }
 
+    // Fast pickups or special handling
+    if (m_targetPuzzleId == PuzzleResearchFuse) {
+        collectFuse();
+        return false;
+    }
+
+    if (m_targetPuzzleId == PuzzleAdminClue) {
+        inspectClue(1);
+        m_activePuzzle = PuzzleAdminClue;
+        emit activePuzzleChanged();
+        return true;
+    }
+
+    if (m_targetPuzzleId == PuzzleAdminClue2) {
+        inspectClue(2);
+        m_activePuzzle = PuzzleAdminClue;
+        emit activePuzzleChanged();
+        return true;
+    }
+
+    if (m_targetPuzzleId == PuzzleAdminClue3) {
+        inspectClue(3);
+        m_activePuzzle = PuzzleAdminClue;
+        emit activePuzzleChanged();
+        return true;
+    }
+
+    if (m_targetPuzzleId == PuzzleManifestClue) {
+        inspectClue(4);
+        m_activePuzzle = PuzzleAdminClue;
+        emit activePuzzleChanged();
+        return true;
+    }
+
     m_activePuzzle = m_targetPuzzleId;
     emit activePuzzleChanged();
     return true;
@@ -279,6 +358,104 @@ void PuzzleManager::closeActivePuzzle()
         m_activePuzzle = PuzzleNone;
         emit activePuzzleChanged();
     }
+}
+
+// ==================== RIDDLE & CARGO PUZZLE IMPLEMENTATION (Puzzle 1) ====================
+
+void PuzzleManager::selectRiddleOption(int index)
+{
+    m_selectedRiddleOption = index;
+    m_riddleFeedback.clear();
+    emit riddleStateChanged();
+}
+
+bool PuzzleManager::solveRiddle(int optionIndex)
+{
+    // Option 0: "THE DRIVE GEAR" (Matches Logistics Memo #402-V)
+    if (optionIndex == 0) {
+        m_craneSolved = true;
+        m_selectedRiddleOption = 0;
+        m_bays[3] = 1;
+        m_bays[1] = 2;
+        m_bays[5] = 3;
+        m_manifestAlpha = 3;
+        m_manifestBeta = 1;
+        m_manifestGamma = 5;
+        m_riddleFeedback = QStringLiteral("RIDDLE SOLVED: 'THE DRIVE GEAR' confirmed. K1 chamber barrier disengaged.");
+        emit craneSolvedChanged();
+        emit riddleSolvedChanged();
+        emit craneStateChanged();
+        emit riddleStateChanged();
+        emit manifestChanged();
+        emit puzzleStateChanged();
+        emit puzzleCompleted(PuzzleCrane, QStringLiteral("Warehouse Security Riddle"));
+        emit barrierOpened(1);
+        emit puzzleFeedback(QStringLiteral("RIDDLE SOLVED: Key 1 chamber barrier unlocked!"), QStringLiteral("#2ecc71"));
+        return true;
+    }
+
+    m_riddleFeedback = QStringLiteral("ACCESS DENIED: Incorrect identity. Review logistics memo #402-V in warehouse office.");
+    emit riddleStateChanged();
+    emit puzzleFeedback(QStringLiteral("INCORRECT RIDDLE RESPONSE — ACCESS DENIED"), QStringLiteral("#e74c3c"));
+    return false;
+}
+
+bool PuzzleManager::submitRiddleAnswer()
+{
+    return solveRiddle(m_selectedRiddleOption);
+}
+
+void PuzzleManager::assignManifest(int containerId, int bayId)
+{
+    if (containerId == 1) m_manifestAlpha = bayId;
+    else if (containerId == 2) m_manifestBeta = bayId;
+    else if (containerId == 3) m_manifestGamma = bayId;
+    m_manifestFeedback.clear();
+    emit manifestChanged();
+}
+
+bool PuzzleManager::verifyCargoManifest()
+{
+    // Solution derived from Shipping Manifest #804-V in Warehouse Office:
+    // Container Alpha (1, #A-101) -> Bay 3 (Heavy Fab)
+    // Container Beta  (2, #B-204) -> Bay 1 (Staging Bay)
+    // Container Gamma (3, #G-309) -> Bay 5 (Cryogenic Storage)
+    if (m_manifestAlpha == 3 && m_manifestBeta == 1 && m_manifestGamma == 5) {
+        m_craneSolved = true;
+        m_bays[3] = 1;
+        m_bays[1] = 2;
+        m_bays[5] = 3;
+        m_manifestFeedback = QStringLiteral("MANIFEST VERIFIED: Container routing approved. K1 chamber barrier disengaged.");
+        emit craneSolvedChanged();
+        emit craneStateChanged();
+        emit manifestChanged();
+        emit puzzleStateChanged();
+        emit puzzleCompleted(PuzzleCrane, QStringLiteral("CARGO MANIFEST VERIFICATION"));
+        emit barrierOpened(1);
+        emit puzzleFeedback(QStringLiteral("CARGO MANIFEST ROUTED — ACCESS KEY B UNLOCKED"), QStringLiteral("#2ecc71"));
+        return true;
+    }
+
+    m_manifestFeedback = QStringLiteral("MANIFEST ERROR: Destination discrepancy detected. Re-check warehouse shipping logs and re-route containers.");
+    emit manifestChanged();
+    return false;
+}
+
+void PuzzleManager::resetManifest()
+{
+    m_manifestAlpha = 0;
+    m_manifestBeta = 0;
+    m_manifestGamma = 0;
+    m_manifestFeedback.clear();
+    emit manifestChanged();
+}
+
+bool PuzzleManager::verifyManifestDirect(int alphaBay, int betaBay, int gammaBay)
+{
+    m_manifestAlpha = alphaBay;
+    m_manifestBeta = betaBay;
+    m_manifestGamma = gammaBay;
+    return verifyCargoManifest();
 }
 
 // ==================== CRANE PUZZLE IMPLEMENTATION ====================
@@ -317,7 +494,12 @@ bool PuzzleManager::grabOrReleaseCrane()
             // Container 3 (Gamma) in Bay 5
             if (m_bays[3] == 1 && m_bays[1] == 2 && m_bays[5] == 3 && !m_craneSolved) {
                 m_craneSolved = true;
+                m_manifestAlpha = 3;
+                m_manifestBeta = 1;
+                m_manifestGamma = 5;
+                m_manifestFeedback = QStringLiteral("MANIFEST VERIFIED: Container routing approved. K1 chamber barrier disengaged.");
                 emit craneSolvedChanged();
+                emit manifestChanged();
                 emit puzzleStateChanged();
                 emit puzzleCompleted(PuzzleCrane, QStringLiteral("CARGO CRANE ALIGNMENT"));
                 emit barrierOpened(1);
@@ -349,6 +531,40 @@ void PuzzleManager::resetCrane()
 
 // ==================== POWER ROUTING CIRCUIT IMPLEMENTATION ====================
 
+void PuzzleManager::collectFuse()
+{
+    if (!m_fuseCollected) {
+        m_fuseCollected = true;
+        emit fuseChanged();
+        emit puzzleFeedback(QStringLiteral("COLLECTED 200A BUS FUSE FROM ELECTRICAL CONTROL ROOM"), QStringLiteral("#00e5ff"));
+    }
+}
+
+bool PuzzleManager::insertFuse()
+{
+    if (m_fuseCollected && !m_fuseInserted) {
+        m_fuseInserted = true;
+        emit fuseChanged();
+        updateCircuitPowerFlow();
+        emit circuitStateChanged();
+        emit puzzleFeedback(QStringLiteral("200A FUSE INSTALLED INTO POWER BUS COUPLER"), QStringLiteral("#2ecc71"));
+
+        if (m_circuitEnergized[8] && !m_powerSolved) {
+            int mask8 = rotateConnectionMask(BASE_CONNECTIONS[8], m_circuitRotations[8]);
+            if (mask8 & DIR_E) {
+                m_powerSolved = true;
+                emit powerSolvedChanged();
+                emit puzzleStateChanged();
+                emit puzzleCompleted(PuzzlePower, QStringLiteral("RESEARCH POWER ROUTING"));
+                emit barrierOpened(2);
+                emit puzzleFeedback(QStringLiteral("CONTAINMENT FIELD DISENGAGED — ACCESS KEY C UNLOCKED"), QStringLiteral("#00e5ff"));
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 bool PuzzleManager::rotateCircuitTile(int tileIndex)
 {
     if (tileIndex < 0 || tileIndex >= 9) return false;
@@ -358,7 +574,7 @@ bool PuzzleManager::rotateCircuitTile(int tileIndex)
     emit circuitStateChanged();
 
     // Check if power successfully energized Tile 8 and Tile 8 conducts out to EAST
-    if (m_circuitEnergized[8] && !m_powerSolved) {
+    if (m_circuitEnergized[8] && !m_powerSolved && m_fuseInserted) {
         int mask8 = rotateConnectionMask(BASE_CONNECTIONS[8], m_circuitRotations[8]);
         if (mask8 & DIR_E) {
             m_powerSolved = true;
@@ -377,6 +593,11 @@ void PuzzleManager::updateCircuitPowerFlow()
 {
     for (int i = 0; i < 9; ++i) {
         m_circuitEnergized[i] = false;
+    }
+
+    // Power requires both the fuse to be inserted and Tile 0 to face West
+    if (!m_fuseInserted) {
+        return;
     }
 
     // Tile 0 must have DIR_W to accept power from West source
@@ -549,6 +770,19 @@ void PuzzleManager::resetCoolant()
     emit coolantStateChanged();
 }
 
+// ==================== ADMINISTRATION INVESTIGATION CLUES ====================
+
+void PuzzleManager::inspectClue(int clueIndex)
+{
+    m_activeClueIndex = clueIndex;
+    if (clueIndex == 1) m_clue1Found = true;
+    else if (clueIndex == 2) m_clue2Found = true;
+    else if (clueIndex == 3) m_clue3Found = true;
+    else if (clueIndex == 4) m_manifestClueFound = true;
+    emit cluesChanged();
+    emit activeClueChanged();
+}
+
 // ==================== RESET ALL PUZZLES ====================
 
 void PuzzleManager::resetAllPuzzles()
@@ -561,12 +795,24 @@ void PuzzleManager::resetAllPuzzles()
     m_targetPuzzleId = 0;
     m_interactionPrompt.clear();
 
+    m_selectedRiddleOption = -1;
+    m_riddleFeedback.clear();
+    resetManifest();
     resetCrane();
+    m_fuseCollected = false;
+    m_fuseInserted = false;
+    m_clue1Found = false;
+    m_clue2Found = false;
+    m_clue3Found = false;
+    m_manifestClueFound = false;
+    m_activeClueIndex = 1;
     resetCircuit();
     clearSecurityCode();
     resetCoolant();
 
     emit craneSolvedChanged();
+    emit riddleSolvedChanged();
+    emit riddleStateChanged();
     emit powerSolvedChanged();
     emit securitySolvedChanged();
     emit coolantSolvedChanged();
@@ -574,4 +820,8 @@ void PuzzleManager::resetAllPuzzles()
     emit activePuzzleChanged();
     emit targetPuzzleIdChanged();
     emit interactionPromptChanged();
+    emit manifestChanged();
+    emit fuseChanged();
+    emit cluesChanged();
+    emit activeClueChanged();
 }

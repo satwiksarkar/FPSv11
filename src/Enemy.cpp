@@ -248,8 +248,10 @@ void Enemy::updateDrone(float deltaTime, const QVector3D &playerPos, Player *pla
     float dz = playerPos.z() - m_position.z();
     float dist = qSqrt(dx * dx + dz * dz);
 
-    if (dist <= m_attackRange) {
-        // CLOSE-RANGE ATTACK: Both shooter and melee drones deal contact damage when close
+    bool canSee = (dist <= m_detectRange) && hasLineOfSight(playerPos);
+
+    if (dist <= m_attackRange && canSee) {
+        // CLOSE-RANGE ATTACK: Must have direct line of sight to damage player (no wall-hack damage)
         m_droneState = DroneState::Attack;
         faceTarget(playerPos);
 
@@ -261,11 +263,9 @@ void Enemy::updateDrone(float deltaTime, const QVector3D &playerPos, Player *pla
                 qDebug() << "[Drone] Close-range contact damage:" << m_attackDamage;
             }
         }
-    } else if (dist <= m_detectRange) {
-        bool canSee = hasLineOfSight(playerPos);
-
-        // If this drone can shoot, has line of sight, and is within shoot range:
-        if (m_canShoot && canSee && dist <= m_shootRange) {
+    } else if (dist <= m_detectRange && canSee) {
+        // Line-of-sight confirmed: engage player
+        if (m_canShoot && dist <= m_shootRange) {
             faceTarget(playerPos);
             m_droneState = DroneState::Chase;
 
@@ -278,7 +278,7 @@ void Enemy::updateDrone(float deltaTime, const QVector3D &playerPos, Player *pla
                 moveAlongPath(deltaTime, m_moveSpeed * 0.75f);
             }
 
-            // Shoot plasma bolts on cooldown
+            // Shoot plasma bolts on cooldown (strictly with clear LOS)
             if (m_attackTimer <= 0.0f) {
                 m_attackTimer = m_attackCooldown;
 
@@ -299,8 +299,7 @@ void Enemy::updateDrone(float deltaTime, const QVector3D &playerPos, Player *pla
                 qDebug() << "[Shooter Drone] Plasma bolt fired!" << (didHit ? "HIT" : "MISS");
             }
         } else {
-            // Non-shooting drone (or shooting drone without clear LOS):
-            // CHASE: pursue the player using BFS to engage
+            // Melee drone or shooter repositioning: CHASE with clear LOS
             m_droneState = DroneState::Chase;
 
             if (m_pathfindTimer <= 0.0f) {
@@ -312,7 +311,7 @@ void Enemy::updateDrone(float deltaTime, const QVector3D &playerPos, Player *pla
             faceTarget(playerPos);
         }
     } else {
-        // IDLE: player too far
+        // IDLE: player too far or blocked by walls/doors (no wall-hack detection)
         m_droneState = DroneState::Idle;
     }
 

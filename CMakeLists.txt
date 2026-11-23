@@ -34,10 +34,12 @@ qt_add_qml_module(FPSLabGame
         qml/DoorModel.qml
         qml/AccessKeyModel.qml
         qml/CraneControlPanel.qml
+        qml/CargoManifestPanel.qml
         qml/CircuitPuzzle.qml
         qml/SecurityTerminal.qml
         qml/CoolantControlPanel.qml
         qml/AdminClueDialog.qml
+        qml/Minimap.qml
     RESOURCES
         qml/dark_hallway.frag
         qml/dark_hallway.vert

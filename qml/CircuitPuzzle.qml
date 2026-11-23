@@ -110,6 +110,68 @@ Rectangle {
             }
         }
 
+        // Fuse Coupler Socket Bar
+        Rectangle {
+            Layout.fillWidth: true
+            height: 38
+            color: (root.puzzleManager && root.puzzleManager.fuseInserted) ? "#16281e" : "#241818"
+            border.color: (root.puzzleManager && root.puzzleManager.fuseInserted) ? "#2ecc71" :
+                          ((root.puzzleManager && root.puzzleManager.fuseCollected) ? "#f39c12" : "#e74c3c")
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 10
+
+                Rectangle {
+                    width: 12
+                    height: 12
+                    radius: 2
+                    color: (root.puzzleManager && root.puzzleManager.fuseInserted) ? "#2ecc71" :
+                           ((root.puzzleManager && root.puzzleManager.fuseCollected) ? "#f39c12" : "#e74c3c")
+                }
+
+                Text {
+                    text: {
+                        if (!root.puzzleManager) return ""
+                        if (root.puzzleManager.fuseInserted) return "AUXILIARY POWER BUS: [200A FUSE INSTALLED - ENERGIZED]"
+                        if (root.puzzleManager.fuseCollected) return "FUSE COUPLER SOCKET: [EMPTY] — 200A FUSE IN INVENTORY"
+                        return "FUSE COUPLER SOCKET: [EMPTY — RETRIEVE 200A FUSE FROM ELECTRICAL CONTROL ROOM]"
+                    }
+                    color: (root.puzzleManager && root.puzzleManager.fuseInserted) ? "#2ecc71" :
+                           ((root.puzzleManager && root.puzzleManager.fuseCollected) ? "#f1c40f" : "#e74c3c")
+                    font.pixelSize: 10
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    visible: root.puzzleManager && root.puzzleManager.fuseCollected && !root.puzzleManager.fuseInserted
+                    height: 24
+                    contentItem: Text {
+                        text: "[INSERT FUSE]"
+                        color: "#ffffff"
+                        font.bold: true
+                        font.pixelSize: 10
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: parent.down ? "#27ae60" : (parent.hovered ? "#2ecc71" : "#16a085")
+                        border.color: "#2ecc71"
+                        border.width: 1
+                    }
+                    onClicked: {
+                        if (root.puzzleManager) {
+                            root.puzzleManager.insertFuse()
+                        }
+                    }
+                }
+            }
+        }
+
         // Circuit Canvas Area with IN / OUT indicators
         RowLayout {
             Layout.fillWidth: true

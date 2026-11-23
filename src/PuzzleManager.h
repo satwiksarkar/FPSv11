@@ -30,10 +30,15 @@ class PuzzleManager : public QObject
 
     // High-level puzzle completion states
     Q_PROPERTY(bool craneSolved READ isCraneSolved NOTIFY craneSolvedChanged)
+    Q_PROPERTY(bool riddleSolved READ isRiddleSolved NOTIFY riddleSolvedChanged)
     Q_PROPERTY(bool powerSolved READ isPowerSolved NOTIFY powerSolvedChanged)
     Q_PROPERTY(bool securitySolved READ isSecuritySolved NOTIFY securitySolvedChanged)
     Q_PROPERTY(bool coolantSolved READ isCoolantSolved NOTIFY coolantSolvedChanged)
     Q_PROPERTY(int solvedCount READ solvedCount NOTIFY puzzleStateChanged)
+
+    // Riddle puzzle properties (Puzzle 1: Warehouse Riddle Terminal)
+    Q_PROPERTY(int selectedRiddleOption READ selectedRiddleOption NOTIFY riddleStateChanged)
+    Q_PROPERTY(QString riddleFeedback READ riddleFeedback NOTIFY riddleStateChanged)
 
     // Active UI state
     Q_PROPERTY(int activePuzzle READ activePuzzle NOTIFY activePuzzleChanged) // 0=None, 1=Crane, 2=Power, 3=Security, 4=Coolant, 5=AdminClue
@@ -64,14 +69,35 @@ class PuzzleManager : public QObject
     Q_PROPERTY(bool flowInRange READ isFlowInRange NOTIFY coolantStateChanged)
     Q_PROPERTY(bool pressureInRange READ isPressureInRange NOTIFY coolantStateChanged)
 
+    // Manifest verification puzzle properties (Puzzle 1)
+    Q_PROPERTY(int manifestAlpha READ manifestAlpha NOTIFY manifestChanged)
+    Q_PROPERTY(int manifestBeta READ manifestBeta NOTIFY manifestChanged)
+    Q_PROPERTY(int manifestGamma READ manifestGamma NOTIFY manifestChanged)
+    Q_PROPERTY(QString manifestFeedback READ manifestFeedback NOTIFY manifestChanged)
+
+    // Fuse inventory & bus coupling properties (Puzzle 2)
+    Q_PROPERTY(bool fuseCollected READ fuseCollected NOTIFY fuseChanged)
+    Q_PROPERTY(bool fuseInserted READ fuseInserted NOTIFY fuseChanged)
+
+    // Administration investigation clues (Puzzle 3)
+    Q_PROPERTY(bool clue1Found READ clue1Found NOTIFY cluesChanged)
+    Q_PROPERTY(bool clue2Found READ clue2Found NOTIFY cluesChanged)
+    Q_PROPERTY(bool clue3Found READ clue3Found NOTIFY cluesChanged)
+    Q_PROPERTY(bool manifestClueFound READ manifestClueFound NOTIFY cluesChanged)
+    Q_PROPERTY(int activeClueIndex READ activeClueIndex NOTIFY activeClueChanged)
+
 public:
     enum PuzzleId {
         PuzzleNone = 0,
-        PuzzleCrane = 1,
+        PuzzleCrane = 1,        // or PuzzleManifest
         PuzzlePower = 2,
         PuzzleSecurity = 3,
         PuzzleCoolant = 4,
-        PuzzleAdminClue = 5
+        PuzzleAdminClue = 5,    // Reception Memo / Clue 1
+        PuzzleResearchFuse = 6, // 200A Ceramic Fuse in Electrical Control Room
+        PuzzleAdminClue2 = 7,   // Supervisor Directive
+        PuzzleAdminClue3 = 8,   // Archive Terminal
+        PuzzleManifestClue = 9  // Shipping Manifest Log in Warehouse Office
     };
     Q_ENUM(PuzzleId)
 
@@ -79,6 +105,9 @@ public:
 
     // Getters
     bool isCraneSolved() const { return m_craneSolved; }
+    bool isRiddleSolved() const { return m_craneSolved; }
+    int selectedRiddleOption() const { return m_selectedRiddleOption; }
+    QString riddleFeedback() const { return m_riddleFeedback; }
     bool isPowerSolved() const { return m_powerSolved; }
     bool isSecuritySolved() const { return m_securitySolved; }
     bool isCoolantSolved() const { return m_coolantSolved; }
@@ -108,6 +137,27 @@ public:
     bool isFlowInRange() const;
     bool isPressureInRange() const;
 
+    // Variant getter / setter
+    int level1Variant() const { return m_level1Variant; }
+    void setLevel1Variant(int variant) { m_level1Variant = variant; }
+
+    // Manifest getters
+    int manifestAlpha() const { return m_manifestAlpha; }
+    int manifestBeta() const { return m_manifestBeta; }
+    int manifestGamma() const { return m_manifestGamma; }
+    QString manifestFeedback() const { return m_manifestFeedback; }
+
+    // Fuse getters
+    bool fuseCollected() const { return m_fuseCollected; }
+    bool fuseInserted() const { return m_fuseInserted; }
+
+    // Clue getters
+    bool clue1Found() const { return m_clue1Found; }
+    bool clue2Found() const { return m_clue2Found; }
+    bool clue3Found() const { return m_clue3Found; }
+    bool manifestClueFound() const { return m_manifestClueFound; }
+    int activeClueIndex() const { return m_activeClueIndex; }
+
     // Chamber barrier collision & gating checks
     Q_INVOKABLE bool isBarrierBlocking(int barrierId) const; // 1=Cargo, 2=Research, 3=Admin, 4=Maint
     Q_INVOKABLE bool isPositionBlockedByBarrier(float x, float z) const;
@@ -122,16 +172,30 @@ public:
     Q_INVOKABLE bool interact(const QVector3D &playerPos, int currentLevel, bool playerAlive = true);
     Q_INVOKABLE void closeActivePuzzle();
 
-    // ==================== CRANE PUZZLE API ====================
+    // ==================== RIDDLE PUZZLE API (Puzzle 1) ====================
+    Q_INVOKABLE void selectRiddleOption(int index);
+    Q_INVOKABLE bool submitRiddleAnswer();
+    Q_INVOKABLE bool solveRiddle(int optionIndex);
+
+    // ==================== CARGO MANIFEST PUZZLE API (Puzzle 1) ====================
+    Q_INVOKABLE void assignManifest(int containerId, int bayId);
+    Q_INVOKABLE bool verifyCargoManifest();
+    Q_INVOKABLE void resetManifest();
+    Q_INVOKABLE bool verifyManifestDirect(int alphaBay, int betaBay, int gammaBay);
+
+    // ==================== CRANE COMPATIBILITY API ====================
     Q_INVOKABLE bool selectCraneBay(int bayIndex);
     Q_INVOKABLE bool grabOrReleaseCrane();
     Q_INVOKABLE void resetCrane();
 
-    // ==================== POWER ROUTING CIRCUIT API ====================
+    // ==================== POWER ROUTING CIRCUIT API (Puzzle 2) ====================
+    Q_INVOKABLE void collectFuse();
+    Q_INVOKABLE bool insertFuse();
     Q_INVOKABLE bool rotateCircuitTile(int tileIndex);
     Q_INVOKABLE void resetCircuit();
 
-    // ==================== SECURITY KEYPAD API ====================
+    // ==================== SECURITY KEYPAD & CLUES API (Puzzle 3) ====================
+    Q_INVOKABLE void inspectClue(int clueIndex);
     Q_INVOKABLE void enterSecurityDigit(const QString &digit);
     Q_INVOKABLE void clearSecurityCode();
     Q_INVOKABLE bool submitSecurityCode();
@@ -146,6 +210,8 @@ public:
 
 signals:
     void craneSolvedChanged();
+    void riddleSolvedChanged();
+    void riddleStateChanged();
     void powerSolvedChanged();
     void securitySolvedChanged();
     void coolantSolvedChanged();
@@ -157,6 +223,10 @@ signals:
     void circuitStateChanged();
     void securityStateChanged();
     void coolantStateChanged();
+    void manifestChanged();
+    void fuseChanged();
+    void cluesChanged();
+    void activeClueChanged();
 
     void puzzleCompleted(int puzzleId, const QString &name);
     void barrierOpened(int barrierId);
@@ -172,10 +242,32 @@ private:
     bool m_powerSolved;
     bool m_securitySolved;
     bool m_coolantSolved;
+    int m_level1Variant;
 
     int m_activePuzzle;
     int m_targetPuzzleId;
     QString m_interactionPrompt;
+
+    // Riddle puzzle state
+    int m_selectedRiddleOption;
+    QString m_riddleFeedback;
+
+    // Manifest verification state
+    int m_manifestAlpha;
+    int m_manifestBeta;
+    int m_manifestGamma;
+    QString m_manifestFeedback;
+
+    // Research fuse state
+    bool m_fuseCollected;
+    bool m_fuseInserted;
+
+    // Admin investigation clue state
+    bool m_clue1Found;
+    bool m_clue2Found;
+    bool m_clue3Found;
+    bool m_manifestClueFound;
+    int m_activeClueIndex;
 
     // Crane state: 6 bays (0..5), storing container id (1=Alpha, 2=Beta, 3=Gamma, 0=Empty)
     // Target configuration: Bay 3=Alpha(1), Bay 1=Beta(2), Bay 5=Gamma(3)

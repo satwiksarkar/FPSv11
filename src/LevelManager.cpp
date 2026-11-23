@@ -5,8 +5,10 @@
 #include "CollisionSystem.h"
 #include "EnemyManager.h"
 #include "Enemy.h"
+#include "Player.h"
 #include <QtMath>
 #include <QDebug>
+#include <QRandomGenerator>
 #include <algorithm>
 #include <cmath>
 
@@ -18,6 +20,16 @@ LevelManager::LevelManager(QObject *parent)
     , m_exitDenyNotified(false)
     , m_loadingBayTriggered(false)
     , m_heavyWeaponCollected(false)
+    , m_playerCount(1)
+    , m_level1Variant(1)
+    , m_levelTime(0.0f)
+    , m_gasLeakTriggerTime(135.0f)
+    , m_gasLeakActive(false)
+    , m_gasLeakResolved(false)
+    , m_gasLeakTimeRemaining(30.0f)
+    , m_gasLeakRepairStage(0)
+    , m_gasStationPos(3850.0f, 0.0f, 3150.0f)
+    , m_gasLeakRoomName(QStringLiteral("GAS CONTROL ROOM"))
     , m_keyMasks{0, 0, 0, 0}
     , m_bossCompleted(false)
     , m_activeVentsRemaining(4)
@@ -52,22 +64,22 @@ QString LevelManager::storyText() const
 
 QVector3D LevelManager::spawnPosition() const
 {
-    return LevelData::getSpawnPoint(m_currentLevel);
+    return LevelData::getSpawnPoint(m_currentLevel, m_level1Variant);
 }
 
 QVector3D LevelManager::exitCenterPosition() const
 {
-    return LevelData::getExitCenterPosition(m_currentLevel);
+    return LevelData::getExitCenterPosition(m_currentLevel, m_level1Variant);
 }
 
 int LevelManager::mapWidth() const
 {
-    return LevelData::getMapWidth(m_currentLevel);
+    return LevelData::getMapWidth(m_currentLevel, m_level1Variant);
 }
 
 int LevelManager::mapHeight() const
 {
-    return LevelData::getMapHeight(m_currentLevel);
+    return LevelData::getMapHeight(m_currentLevel, m_level1Variant);
 }
 
 float LevelManager::blockSize() const
@@ -91,6 +103,30 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
     if (levelIndex == 1) {
         m_heavyWeaponCollected = false;
         emit heavyWeaponCollectedChanged();
+
+        m_level1Variant = (m_playerCount >= 3) ? 2 : 1;
+        emit level1VariantChanged(m_level1Variant);
+
+        m_levelTime = 0.0f;
+        m_gasLeakActive = false;
+        m_gasLeakResolved = false;
+        m_gasLeakTimeRemaining = 30.0f;
+        m_gasLeakRepairStage = 0;
+        // Strict safety window: 120s + rand(15s..50s)
+        m_gasLeakTriggerTime = 120.0f + static_cast<float>(QRandomGenerator::global()->bounded(15, 50));
+        float bs = GameConfig::BLOCK_SIZE;
+        if (m_level1Variant == 2) {
+            m_gasStationPos = QVector3D((62.0f + 0.5f) * bs, 0.0f, (66.0f + 0.5f) * bs);
+            m_gasLeakRoomName = QStringLiteral("MAINTENANCE WORKSHOP");
+        } else {
+            m_gasStationPos = QVector3D((38.0f + 0.5f) * bs, 0.0f, (31.0f + 0.5f) * bs);
+            m_gasLeakRoomName = QStringLiteral("GAS CONTROL ROOM");
+        }
+        emit gasEmergencyChanged();
+
+        if (m_puzzleManager) {
+            m_puzzleManager->setLevel1Variant(m_level1Variant);
+        }
     }
 
     if (levelIndex > m_maxLevels) {
@@ -125,7 +161,7 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
 
     // ==================== BFS REACHABILITY CHECK AT LOAD TIME ====================
     QString reachabilityLog;
-    bool isReachable = LevelData::checkReachability(m_currentLevel, reachabilityLog);
+    bool isReachable = LevelData::checkReachability(m_currentLevel, reachabilityLog, m_level1Variant);
     if (!isReachable) {
         qWarning() << "[LevelManager] CRITICAL WARNING: Exit tile is NOT reachable from spawn!" << reachabilityLog;
     } else {
@@ -151,7 +187,7 @@ void LevelManager::resetToFirstLevel()
 
 int LevelManager::getTile(int row, int col) const
 {
-    return LevelData::getTile(m_currentLevel, row, col);
+    return LevelData::getTile(m_currentLevel, row, col, m_level1Variant);
 }
 
 int LevelManager::getTileAtWorldPos(float x, float z) const
@@ -159,6 +195,20 @@ int LevelManager::getTileAtWorldPos(float x, float z) const
     int col = qFloor(x / GameConfig::BLOCK_SIZE);
     int row = qFloor(z / GameConfig::BLOCK_SIZE);
     return getTile(row, col);
+}
+
+QByteArray LevelManager::getMapData() const
+{
+    int w = mapWidth();
+    int h = mapHeight();
+    QByteArray bytes;
+    bytes.resize(w * h);
+    for (int r = 0; r < h; ++r) {
+        for (int c = 0; c < w; ++c) {
+            bytes[r * w + c] = static_cast<char>(getTile(r, c));
+        }
+    }
+    return bytes;
 }
 
 bool LevelManager::isStaticSolidTile(int row, int col) const
@@ -282,8 +332,8 @@ bool LevelManager::isInLoadingBay(float x, float z) const
     int col = qFloor(x / GameConfig::BLOCK_SIZE);
     int row = qFloor(z / GameConfig::BLOCK_SIZE);
 
-    // Level 1 Cargo Warehouse (Loading Bay) is at rows 4 to 24, cols 4 to 25
-    return (row >= 4 && row <= 24 && col >= 4 && col <= 25);
+    // Level 1 Cargo Warehouse (Loading Bay) is at rows 4 to 22, cols 4 to 25
+    return (row >= 4 && row <= 22 && col >= 4 && col <= 25);
 }
 
 bool LevelManager::triggerLoadingBay()
@@ -298,7 +348,7 @@ bool LevelManager::triggerLoadingBay()
 int LevelManager::corridorDroneSpawnCount() const
 {
     if (m_currentLevel == 1) {
-        return LevelData::getLevel1CorridorDroneSpawns().size();
+        return LevelData::getLevel1CorridorDroneSpawns(m_level1Variant).size();
     }
     return 1;
 }
@@ -306,7 +356,7 @@ int LevelManager::corridorDroneSpawnCount() const
 QVector3D LevelManager::corridorDroneSpawn(int index) const
 {
     if (m_currentLevel == 1) {
-        auto list = LevelData::getLevel1CorridorDroneSpawns();
+        auto list = LevelData::getLevel1CorridorDroneSpawns(m_level1Variant);
         if (index >= 0 && index < list.size()) {
             return list[index];
         }
@@ -317,7 +367,7 @@ QVector3D LevelManager::corridorDroneSpawn(int index) const
 int LevelManager::loadingBayDroneSpawnCount() const
 {
     if (m_currentLevel == 1) {
-        return LevelData::getLevel1LoadingBayDroneSpawns().size();
+        return LevelData::getLevel1LoadingBayDroneSpawns(m_level1Variant).size();
     }
     return 0;
 }
@@ -325,7 +375,7 @@ int LevelManager::loadingBayDroneSpawnCount() const
 QVector3D LevelManager::loadingBayDroneSpawn(int index) const
 {
     if (m_currentLevel == 1) {
-        auto list = LevelData::getLevel1LoadingBayDroneSpawns();
+        auto list = LevelData::getLevel1LoadingBayDroneSpawns(m_level1Variant);
         if (index >= 0 && index < list.size()) {
             return list[index];
         }
@@ -605,7 +655,7 @@ void LevelManager::rebuildDoorsForLevel(int level)
 {
     clearDoors();
 
-    const QList<DoorDef> defs = LevelData::getLevelDoors(level);
+    const QList<DoorDef> defs = LevelData::getLevelDoors(level, m_level1Variant);
     for (const DoorDef &def : defs) {
         Door *door = addDoor(def.row,
                              def.col,
@@ -839,6 +889,18 @@ bool LevelManager::evaluateDoorAccess(const Door *door, QString &outDenyReason) 
         return true;
 
     case Door::DoorType::KeyLocked: {
+        if (m_currentLevel == 1) {
+            if (door->label() == QStringLiteral("ELECTRICAL VAULT BULKHEAD")) {
+                if (m_puzzleManager && m_puzzleManager->isPowerSolved()) return true;
+                outDenyReason = QStringLiteral("[LOCKED] RESTORE SUBSTATION POWER");
+                return false;
+            }
+            if (door->label() == QStringLiteral("PASSWORD VAULT BULKHEAD")) {
+                if (m_puzzleManager && m_puzzleManager->isSecuritySolved()) return true;
+                outDenyReason = QStringLiteral("[LOCKED] ENTER PASSCODE AT KEYPAD");
+                return false;
+            }
+        }
         const int reqIdx = door->requiredKeyIndex();
         const int reqMask = door->requiredKeyMask();
         const int reqCount = door->requiredKeyCount();
@@ -873,7 +935,7 @@ bool LevelManager::evaluateDoorAccess(const Door *door, QString &outDenyReason) 
     }
 
     case Door::DoorType::MainExit: {
-        const int reqKeys = (door->requiredKeyCount() > 0) ? door->requiredKeyCount() : 4;
+        const int reqKeys = (door->requiredKeyCount() > 0) ? door->requiredKeyCount() : totalKeysRequired();
         const int reqMask = door->requiredKeyMask();
         const bool keysSatisfied = (count >= reqKeys) && (reqMask == 0 || (mask & reqMask) == reqMask);
         const bool bossRequired = door->requiresBossDefeated() || (m_currentLevel == 3);
@@ -1076,6 +1138,9 @@ int LevelManager::collectedKeysCount() const
 
 int LevelManager::totalKeysRequired() const
 {
+    if (m_currentLevel == 1) {
+        return (m_level1Variant == 2) ? 4 : 2;
+    }
     return 4;
 }
 
@@ -1132,6 +1197,24 @@ void LevelManager::setPuzzleManager(PuzzleManager *pm)
 {
     if (m_puzzleManager.data() != pm) {
         m_puzzleManager = pm;
+        if (m_puzzleManager) {
+            m_puzzleManager->setLevel1Variant(m_level1Variant);
+            connect(m_puzzleManager.data(), &PuzzleManager::barrierOpened, this, [this](int barrierId){
+                if (barrierId == 2) {
+                    for (Door *d : m_doors) {
+                        if (d && d->label() == QStringLiteral("ELECTRICAL VAULT BULKHEAD")) {
+                            d->tryOpen(true);
+                        }
+                    }
+                } else if (barrierId == 3) {
+                    for (Door *d : m_doors) {
+                        if (d && d->label() == QStringLiteral("PASSWORD VAULT BULKHEAD")) {
+                            d->tryOpen(true);
+                        }
+                    }
+                }
+            });
+        }
         emit puzzleManagerChanged();
     }
 }
@@ -1191,7 +1274,8 @@ bool LevelManager::hasAllKeys(int level) const
     if (targetLevel < 1 || targetLevel > m_maxLevels) {
         return false;
     }
-    return collectedKeysCountForLevel(targetLevel) >= 4;
+    int required = (targetLevel == 1) ? totalKeysRequired() : 4;
+    return collectedKeysCountForLevel(targetLevel) >= required;
 }
 
 bool LevelManager::collectKey(int keyIndex, bool playerAlive)
@@ -1313,7 +1397,7 @@ void LevelManager::rebuildKeysForLevel(int level)
 {
     clearKeys();
 
-    const QList<KeyDef> defs = LevelData::getLevelKeys(level);
+    const QList<KeyDef> defs = LevelData::getLevelKeys(level, m_level1Variant);
     for (const KeyDef &def : defs) {
         addKey(def.row, def.col, def.keyIndex, def.name);
     }
@@ -1338,13 +1422,130 @@ void LevelManager::updateKeys(float deltaTime, const QVector3D &playerPos, bool 
         pickup->update(deltaTime);
         if (m_currentLevel == 1 && m_puzzleManager) {
             // Guard key collection on Level 1 until corresponding puzzle is solved
-            if (pickup->keyIndex() == 0 && !m_puzzleManager->isCoolantSolved()) continue;
-            if (pickup->keyIndex() == 1 && !m_puzzleManager->isCraneSolved()) continue;
-            if (pickup->keyIndex() == 2 && !m_puzzleManager->isPowerSolved()) continue;
-            if (pickup->keyIndex() == 3 && !m_puzzleManager->isSecuritySolved()) continue;
+            if (m_level1Variant == 1) {
+                if (pickup->keyIndex() == 0 && !m_puzzleManager->isPowerSolved()) continue;
+                if (pickup->keyIndex() == 1 && !m_puzzleManager->isSecuritySolved()) continue;
+            } else {
+                if ((pickup->keyIndex() == 0 || pickup->keyIndex() == 1) && !m_puzzleManager->isPowerSolved()) continue;
+                if ((pickup->keyIndex() == 2 || pickup->keyIndex() == 3) && !m_puzzleManager->isSecuritySolved()) continue;
+            }
         }
         if (playerAlive && pickup->isPlayerInRange(playerPos, playerAlive)) {
             collectKey(pickup->keyIndex(), playerAlive);
+        }
+    }
+}
+
+int LevelManager::playerCount() const
+{
+    return m_playerCount;
+}
+
+void LevelManager::setPlayerCount(int count)
+{
+    if (count < 1) count = 1;
+    if (m_playerCount != count) {
+        m_playerCount = count;
+        emit playerCountChanged(m_playerCount);
+        int newVariant = (m_playerCount >= 3) ? 2 : 1;
+        if (m_level1Variant != newVariant) {
+            m_level1Variant = newVariant;
+            emit level1VariantChanged(m_level1Variant);
+            if (m_currentLevel == 1) {
+                loadLevel(1, true);
+            }
+        }
+    }
+}
+
+int LevelManager::level1Variant() const
+{
+    return m_level1Variant;
+}
+
+bool LevelManager::isGasLeakActive() const
+{
+    return m_gasLeakActive;
+}
+
+float LevelManager::gasLeakTimeRemaining() const
+{
+    return m_gasLeakTimeRemaining;
+}
+
+int LevelManager::gasLeakRepairStage() const
+{
+    return m_gasLeakRepairStage;
+}
+
+QString LevelManager::gasLeakRoomName() const
+{
+    return m_gasLeakRoomName;
+}
+
+QVector3D LevelManager::gasStationPosition() const
+{
+    return m_gasStationPos;
+}
+
+void LevelManager::triggerGasLeakEmergency()
+{
+    if (m_currentLevel != 1 || m_gasLeakActive) return;
+    m_gasLeakActive = true;
+    m_gasLeakTimeRemaining = 30.0f;
+    m_gasLeakRepairStage = 0;
+    emit gasEmergencyTriggered();
+    emit gasEmergencyChanged();
+    qDebug() << "[LevelManager] CRITICAL GAS LEAK EMERGENCY TRIGGERED in" << m_gasLeakRoomName;
+}
+
+void LevelManager::purgeGasEmergency()
+{
+    if (!m_gasLeakActive) return;
+    m_gasLeakActive = false;
+    m_gasLeakResolved = true;
+    emit gasEmergencyResolved();
+    emit gasEmergencyChanged();
+    emit doorInteractionFeedback(QStringLiteral("ATMOSPHERE RESTORED. HAZARD NEUTRALIZED. (+100 PTS)"), QStringLiteral("#2ecc71"));
+    qDebug() << "[LevelManager] Gas emergency resolved!";
+}
+
+void LevelManager::interactGasStation(const QVector3D &playerPos)
+{
+    if (m_currentLevel != 1 || !m_gasLeakActive) return;
+    float dist = (playerPos - m_gasStationPos).length();
+    if (dist > 250.0f) return;
+
+    m_gasLeakRepairStage++;
+    if (m_gasLeakRepairStage >= 3) {
+        purgeGasEmergency();
+    } else {
+        emit gasEmergencyChanged();
+        emit doorInteractionFeedback(QStringLiteral("GAS REPAIR STAGE %1/3 COMPLETE").arg(m_gasLeakRepairStage), QStringLiteral("#f1c40f"));
+    }
+}
+
+void LevelManager::updateGasEmergency(float deltaTime, Player *player)
+{
+    if (m_currentLevel != 1 || deltaTime <= 0.0f) return;
+
+    if (!m_gasLeakActive && !m_gasLeakResolved) {
+        m_levelTime += deltaTime;
+        if (m_levelTime >= m_gasLeakTriggerTime) {
+            triggerGasLeakEmergency();
+        }
+    } else if (m_gasLeakActive) {
+        m_gasLeakTimeRemaining -= deltaTime;
+        if (m_gasLeakTimeRemaining <= 0.0f) {
+            m_gasLeakTimeRemaining = 0.0f;
+            emit gasEmergencyFatal();
+            emit gasEmergencyChanged();
+            if (player && !player->isDead()) {
+                qDebug() << "[LevelManager] GAS LEAK TIMEOUT: Squad wipe fatal asphyxiation!";
+                player->takeDamage(9999);
+            }
+        } else {
+            emit gasEmergencyChanged();
         }
     }
 }

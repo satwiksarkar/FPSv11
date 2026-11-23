@@ -18,6 +18,7 @@ Player::Player(QObject *parent)
     , m_pitch(0.0f)
     , m_currentEyeHeight(GameConfig::EYE_HEIGHT_STAND)
     , m_isCrouching(false)
+    , m_isSprinting(false)
     , m_moveForward(false)
     , m_moveBackward(false)
     , m_moveLeft(false)
@@ -129,6 +130,11 @@ bool Player::isCrouching() const
     return m_isCrouching;
 }
 
+bool Player::isSprinting() const
+{
+    return m_isSprinting;
+}
+
 bool Player::isGrounded() const
 {
     return m_isGrounded;
@@ -188,6 +194,14 @@ void Player::setCrouch(bool crouch)
     }
 }
 
+void Player::setSprint(bool sprint)
+{
+    if (m_isSprinting != sprint) {
+        m_isSprinting = sprint;
+        emit sprintChanged(m_isSprinting);
+    }
+}
+
 void Player::setRotation(float yaw, float pitch)
 {
     m_yaw = yaw;
@@ -220,8 +234,13 @@ void Player::update(float deltaTime)
         wishDir.normalize();
     }
 
-    // Determine current speed based on crouching state
-    float currentSpeed = m_isCrouching ? GameConfig::PLAYER_CROUCH_SPEED : GameConfig::PLAYER_WALK_SPEED;
+    // Determine current speed based on crouching and sprinting state
+    float currentSpeed = GameConfig::PLAYER_WALK_SPEED;
+    if (m_isCrouching) {
+        currentSpeed = GameConfig::PLAYER_CROUCH_SPEED;
+    } else if (m_isSprinting) {
+        currentSpeed = GameConfig::PLAYER_SPRINT_SPEED;
+    }
     QVector3D horizontalMovement = wishDir * currentSpeed * deltaTime;
 
     // Vertical physics (Gravity & Jump)

@@ -19,6 +19,7 @@
 class BossArena;
 class CollisionSystem;
 class EnemyManager;
+class Player;
 
 /**
  * @brief The LevelManager class manages current campaign progress, active tile maps,
@@ -60,6 +61,17 @@ class LevelManager : public QObject
     Q_PROPERTY(bool extractionAvailable READ isExtractionAvailable NOTIFY missionProgressChanged)
     Q_PROPERTY(PuzzleManager* puzzleManager READ puzzleManager WRITE setPuzzleManager NOTIFY puzzleManagerChanged)
 
+    // Player Count & Level 1 Variant properties
+    Q_PROPERTY(int playerCount READ playerCount WRITE setPlayerCount NOTIFY playerCountChanged)
+    Q_PROPERTY(int level1Variant READ level1Variant NOTIFY level1VariantChanged)
+
+    // Gas Emergency properties
+    Q_PROPERTY(bool gasLeakActive READ isGasLeakActive NOTIFY gasEmergencyChanged)
+    Q_PROPERTY(float gasLeakTimeRemaining READ gasLeakTimeRemaining NOTIFY gasEmergencyChanged)
+    Q_PROPERTY(int gasLeakRepairStage READ gasLeakRepairStage NOTIFY gasEmergencyChanged)
+    Q_PROPERTY(QString gasLeakRoomName READ gasLeakRoomName NOTIFY gasEmergencyChanged)
+    Q_PROPERTY(QVector3D gasStationPosition READ gasStationPosition NOTIFY gasEmergencyChanged)
+
 public:
     explicit LevelManager(QObject *parent = nullptr);
 
@@ -97,6 +109,23 @@ public:
     int activeVentsRemaining() const;
     bool isExtractionAvailable() const;
 
+    // Player Count & Variant API
+    int playerCount() const;
+    void setPlayerCount(int count);
+    int level1Variant() const;
+
+    // Gas Emergency API
+    bool isGasLeakActive() const;
+    float gasLeakTimeRemaining() const;
+    int gasLeakRepairStage() const;
+    QString gasLeakRoomName() const;
+    QVector3D gasStationPosition() const;
+
+    Q_INVOKABLE void interactGasStation(const QVector3D &playerPos);
+    Q_INVOKABLE void updateGasEmergency(float deltaTime, Player *player = nullptr);
+    Q_INVOKABLE void triggerGasLeakEmergency();
+    Q_INVOKABLE void purgeGasEmergency();
+
     // Level progression actions
     Q_INVOKABLE void loadLevel(int levelIndex, bool resetLevelKeys = true);
     Q_INVOKABLE void advanceLevel();
@@ -120,6 +149,7 @@ public:
     Q_INVOKABLE int getTileAtWorldPos(float x, float z) const;
     Q_INVOKABLE bool isStaticSolidTile(int row, int col) const;
     Q_INVOKABLE bool isSolidTile(int row, int col) const;
+    Q_INVOKABLE QByteArray getMapData() const;
 
     // Door system API
     Q_INVOKABLE int doorCount() const;
@@ -202,6 +232,12 @@ signals:
     void bossArenaChanged();
     void puzzleManagerChanged();
     void missionProgressChanged();
+    void playerCountChanged(int count);
+    void level1VariantChanged(int variant);
+    void gasEmergencyChanged();
+    void gasEmergencyTriggered();
+    void gasEmergencyResolved();
+    void gasEmergencyFatal();
 
 private:
     void rebuildDoorsForLevel(int level);
@@ -226,6 +262,19 @@ private:
     bool m_heavyWeaponCollected;
     QSet<int> m_consumedAmmoTiles;
     QSet<int> m_triggeredTraps;
+
+    int m_playerCount;
+    int m_level1Variant;
+
+    // Gas Emergency
+    float m_levelTime;
+    float m_gasLeakTriggerTime;
+    bool m_gasLeakActive;
+    bool m_gasLeakResolved;
+    float m_gasLeakTimeRemaining;
+    int m_gasLeakRepairStage;
+    QVector3D m_gasStationPos;
+    QString m_gasLeakRoomName;
 
     QList<Door*> m_doors;
     QHash<int, Door*> m_doorTileLookup;

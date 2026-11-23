@@ -78,6 +78,32 @@ Item {
     property bool bossCompleted: false
     property bool extractionAvailable: false
 
+    // Gas Leak Environmental Hazard properties
+    property bool gasLeakActive: false
+    property bool playerInGasZone: false
+    property string gasLeakSectorName: ""
+    property int gasLeakRemainingSeconds: 0
+    property int gasLeakRepairStage: 0
+
+    // Investigation Notebook
+    property bool notebookExpanded: false
+
+    function toggleNotebook() {
+        notebookExpanded = !notebookExpanded
+    }
+
+    // Minimap references (Phase 4)
+    property var levelManagerRef: null
+    property var playerRef: null
+    property var puzzleManagerRef: null
+    property var enemyManagerRef: null
+
+    function toggleMinimap() {
+        if (minimap) {
+            minimap.toggleExpanded()
+        }
+    }
+
     // ==================== FULLSCREEN DAMAGE & HEAL FLASHES ====================
     Rectangle {
         id: damageOverlay
@@ -95,6 +121,60 @@ Item {
         opacity: Math.min(0.35, root.healFlashIntensity * 0.35)
         visible: opacity > 0.01
         z: 99
+    }
+
+    Rectangle {
+        id: toxicGasOverlay
+        anchors.fill: parent
+        color: "#2ecc71"
+        opacity: (root.gasLeakActive && root.playerInGasZone) ? 0.32 : 0.0
+        visible: opacity > 0.01
+        z: 98
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+    }
+
+    // ==================== BIOHAZARD GAS LEAK WARNING BANNER ====================
+    Rectangle {
+        id: gasLeakBanner
+        anchors.top: levelNameCard.bottom
+        anchors.topMargin: 8
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.max(420, bannerRow.width + 40)
+        height: 38
+        color: (root.gasLeakRemainingSeconds <= 10) ? "#e6330000" : "#d91b0000"
+        border.color: (root.gasLeakRemainingSeconds <= 10) ? "#ff3333" : "#f39c12"
+        border.width: 2
+        radius: 3
+        visible: root.gasLeakActive
+        z: 100
+
+        RowLayout {
+            id: bannerRow
+            anchors.centerIn: parent
+            spacing: 10
+
+            Text {
+                text: "☣"
+                color: (root.gasLeakRemainingSeconds <= 10) ? "#ff3333" : "#f1c40f"
+                font.pixelSize: 18
+                font.bold: true
+            }
+
+            Text {
+                text: "CRITICAL GAS LEAK: " + root.gasLeakRemainingSeconds + "s // REPAIR AT: " + root.gasLeakSectorName.toUpperCase() + " (" + root.gasLeakRepairStage + "/3 STAGES)"
+                color: (root.gasLeakRemainingSeconds <= 10) ? "#ff4d4d" : "#f39c12"
+                font.pixelSize: 11
+                font.bold: true
+                font.letterSpacing: 1
+            }
+
+            Text {
+                text: "☣"
+                color: (root.gasLeakRemainingSeconds <= 10) ? "#ff3333" : "#f1c40f"
+                font.pixelSize: 18
+                font.bold: true
+            }
+        }
     }
 
     // ==================== TOP-CENTER: LEVEL NAME BADGE ====================
@@ -466,6 +546,136 @@ Item {
         anchors.topMargin: 24
         anchors.rightMargin: 24
         spacing: 8
+
+        // Tactical Minimap & Radar (Phase 4)
+        Minimap {
+            id: minimap
+            anchors.right: parent.right
+            levelManager: root.levelManagerRef
+            player: root.playerRef
+            puzzleManager: root.puzzleManagerRef
+            enemyManager: root.enemyManagerRef
+        }
+
+        // Investigation Notebook / Clue Tracker (Level 1)
+        Rectangle {
+            id: notebookCard
+            anchors.right: parent.right
+            width: root.notebookExpanded ? 280 : 196
+            height: root.notebookExpanded ? 190 : 32
+            color: "#e610141d"
+            border.color: (root.puzzleManagerRef && root.puzzleManagerRef.securitySolved) ? "#2ecc71" : "#f39c12"
+            border.width: 1.5
+            radius: 3
+            visible: root.levelManagerRef && root.levelManagerRef.currentLevel === 1
+            clip: true
+
+            Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.toggleNotebook()
+            }
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 6
+                spacing: 4
+
+                // Header / Compact Toggle
+                Row {
+                    width: parent.width
+                    spacing: 6
+
+                    Text {
+                        text: "📋"
+                        font.pixelSize: 12
+                    }
+
+                    Text {
+                        text: "DOSSIER [N]: " + (
+                            (root.puzzleManagerRef ? (
+                                (root.puzzleManagerRef.clue1Found ? 1 : 0) +
+                                (root.puzzleManagerRef.clue2Found ? 1 : 0) +
+                                (root.puzzleManagerRef.clue3Found ? 1 : 0) +
+                                (root.puzzleManagerRef.manifestClueFound ? 1 : 0)
+                            ) : 0) + "/4 CLUES"
+                        )
+                        color: "#f39c12"
+                        font.pixelSize: 10
+                        font.bold: true
+                        font.letterSpacing: 1
+                    }
+
+                    Item { width: 1; height: 1 }
+
+                    Text {
+                        anchors.right: parent.right
+                        text: root.notebookExpanded ? "▲" : "▼"
+                        color: "#7f8c8d"
+                        font.pixelSize: 9
+                    }
+                }
+
+                // Expanded Clue Details
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: "#2c3e50"
+                    visible: root.notebookExpanded
+                }
+
+                Column {
+                    width: parent.width
+                    spacing: 3
+                    visible: root.notebookExpanded
+
+                    Text {
+                        text: "1. SECTOR: " + (root.puzzleManagerRef && root.puzzleManagerRef.clue1Found ? "[5] (RECEPTION MEMO)" : "UNREAD // RECEPTION")
+                        color: root.puzzleManagerRef && root.puzzleManagerRef.clue1Found ? "#00e5ff" : "#7f8c8d"
+                        font.pixelSize: 9
+                        font.bold: true
+                    }
+                    Text {
+                        text: "2. SUB-LEVEL: " + (root.puzzleManagerRef && root.puzzleManagerRef.clue2Found ? "[8] (SUPERVISOR LOG)" : "UNREAD // SUPERVISOR")
+                        color: root.puzzleManagerRef && root.puzzleManagerRef.clue2Found ? "#00e5ff" : "#7f8c8d"
+                        font.pixelSize: 9
+                        font.bold: true
+                    }
+                    Text {
+                        text: "3. VAULT BAY: " + (root.puzzleManagerRef && root.puzzleManagerRef.clue3Found ? "[2] (ARCHIVE TERMINAL)" : "UNREAD // ARCHIVE")
+                        color: root.puzzleManagerRef && root.puzzleManagerRef.clue3Found ? "#00e5ff" : "#7f8c8d"
+                        font.pixelSize: 9
+                        font.bold: true
+                    }
+                    Text {
+                        text: "4. ROUTING GATE: " + (root.puzzleManagerRef && root.puzzleManagerRef.manifestClueFound ? "[4] (WAREHOUSE LOG)" : "UNREAD // WAREHOUSE")
+                        color: root.puzzleManagerRef && root.puzzleManagerRef.manifestClueFound ? "#00e5ff" : "#7f8c8d"
+                        font.pixelSize: 9
+                        font.bold: true
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#2c3e50"
+                    }
+
+                    Text {
+                        text: (root.puzzleManagerRef && root.puzzleManagerRef.securitySolved)
+                            ? "VAULT OVERRIDE: [5824] — UNLOCKED"
+                            : ((root.puzzleManagerRef && root.puzzleManagerRef.clue1Found && root.puzzleManagerRef.clue2Found && root.puzzleManagerRef.clue3Found && root.puzzleManagerRef.manifestClueFound)
+                                ? "PASSCODE COMPILED: [5824] (READY)"
+                                : "PASSCODE: INCOMPLETE (EXPLORE)")
+                        color: (root.puzzleManagerRef && root.puzzleManagerRef.securitySolved) ? "#2ecc71" : ((root.puzzleManagerRef && root.puzzleManagerRef.clue1Found && root.puzzleManagerRef.clue2Found && root.puzzleManagerRef.clue3Found && root.puzzleManagerRef.manifestClueFound) ? "#f1c40f" : "#e74c3c")
+                        font.pixelSize: 9
+                        font.bold: true
+                    }
+                }
+            }
+        }
 
         // Real-Time FPS Badge (Stage V8)
         Rectangle {
