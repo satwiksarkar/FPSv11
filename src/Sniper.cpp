@@ -5,6 +5,7 @@
 #include "EnemyManager.h"
 #include "BossArena.h"
 #include "CoolingVent.h"
+#include "LevelManager.h"
 #include <QtMath>
 #include <QDebug>
 
@@ -155,9 +156,16 @@ Sniper::HitType Sniper::shootAll(const QVector3D &origin, const QVector3D &direc
         hitVent = bossArena->checkRayHitVents(origin, normDir, ventHitDist);
     }
 
+    // 4. Raycast against Level 1 Shootable Power Relays via LevelManager
+    float relayHitDist = 1e9f;
+    int hitRelayIndex = -1;
+    if (world && world->levelManager()) {
+        hitRelayIndex = world->levelManager()->checkRayHitRelays(origin, normDir, relayHitDist);
+    }
+
     // Determine closest target
     float closestDist = wallHitDist;
-    int closestType = hitWall ? 0 : -1; // 0 = Wall, 1 = Enemy, 2 = Vent
+    int closestType = hitWall ? 0 : -1; // 0 = Wall, 1 = Enemy, 2 = Vent, 3 = Relay
 
     if (hitEnemy && enemyHitDist < closestDist) {
         closestDist = enemyHitDist;
@@ -169,11 +177,26 @@ Sniper::HitType Sniper::shootAll(const QVector3D &origin, const QVector3D &direc
         closestType = 2;
     }
 
+    if (hitRelayIndex >= 0 && relayHitDist < closestDist) {
+        closestDist = relayHitDist;
+        closestType = 3;
+    }
+
     // Case 0: Wall or Pillar blocked the shot
     if (closestType == 0) {
         qDebug() << "[Sniper] Shot hit WALL/PILLAR at distance:" << wallHitDist;
         emit shotFired(wallHitPoint, HitType::Miss);
         return HitType::Miss;
+    }
+
+    // Case 3: Power Relay hit before any obstacle
+    if (closestType == 3) {
+        world->levelManager()->destroyRelay(hitRelayIndex);
+        QVector3D hitPoint = origin + normDir * relayHitDist;
+        qDebug() << "[Sniper] Shot hit POWER RELAY" << hitRelayIndex << "Distance:" << relayHitDist;
+        emit targetHit(hitPoint, HitType::CoolingVent);
+        emit shotFired(hitPoint, HitType::CoolingVent);
+        return HitType::CoolingVent;
     }
 
     // Case 1: Enemy hit before any obstacle

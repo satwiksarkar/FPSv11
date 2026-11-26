@@ -92,6 +92,11 @@ Item {
         notebookExpanded = !notebookExpanded
     }
 
+    // Movement & Stance Indicators
+    property bool isCrawling: false
+    property bool isCrouching: false
+    property bool isSprinting: false
+
     // Minimap references (Phase 4)
     property var levelManagerRef: null
     property var playerRef: null
@@ -374,7 +379,26 @@ Item {
                     font.bold: true
                 }
 
-                Item { width: healthCard.width - 130 }
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 14
+                    width: stanceText.width + 8
+                    color: root.isCrawling ? "#309b59b6" : (root.isCrouching ? "#303498db" : (root.isSprinting ? "#30e67e22" : "#20ffffff"))
+                    border.color: root.isCrawling ? "#9b59b6" : (root.isCrouching ? "#3498db" : (root.isSprinting ? "#e67e22" : "#7f8c8d"))
+                    border.width: 1
+
+                    Text {
+                        id: stanceText
+                        anchors.centerIn: parent
+                        text: root.isCrawling ? "CRAWL" : (root.isCrouching ? "CROUCH" : (root.isSprinting ? "SPRINT" : "STAND"))
+                        color: root.isCrawling ? "#c39bd3" : (root.isCrouching ? "#5dade2" : (root.isSprinting ? "#f39c12" : "#bdc3c7"))
+                        font.pixelSize: 8
+                        font.bold: true
+                        font.letterSpacing: 1
+                    }
+                }
+
+                Item { width: Math.max(8, healthCard.width - 130 - stanceText.width - 14) }
 
                 Text {
                     text: root.playerHealth + " / " + root.playerMaxHealth + " HP"
@@ -1431,6 +1455,165 @@ Item {
                                 color: root.medkits > 0 ? "#e74c3c" : "#7f8c8d"
                                 font.pixelSize: 10
                                 font.bold: true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ==================== EXIT ELEVATOR KEYPAD MODAL (LEVEL 1) ====================
+    Rectangle {
+        id: exitKeypadOverlay
+        anchors.fill: parent
+        color: "#d9000000"
+        visible: root.levelManagerRef ? root.levelManagerRef.keypadVisible : false
+        z: 999
+
+        property string enteredCode: ""
+
+        onVisibleChanged: {
+            if (visible) {
+                enteredCode = ""
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {} // Block game input
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: 380
+            height: 480
+            color: "#161922"
+            border.color: "#00e5ff"
+            border.width: 2
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 14
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "SECURITY OVERRIDE TERMINAL"
+                    color: "#00e5ff"
+                    font.pixelSize: 15
+                    font.bold: true
+                    font.letterSpacing: 2
+                }
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "ENTER 4-DIGIT CODE (K1 - K2 - K3 - K4)"
+                    color: "#95a5a6"
+                    font.pixelSize: 11
+                    font.bold: true
+                }
+
+                // Digits Display
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 12
+
+                    Repeater {
+                        model: 4
+                        Rectangle {
+                            width: 54
+                            height: 60
+                            color: "#0d0f14"
+                            border.color: (index < exitKeypadOverlay.enteredCode.length) ? "#2ecc71" : "#34495e"
+                            border.width: 2
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: (index < exitKeypadOverlay.enteredCode.length)
+                                      ? exitKeypadOverlay.enteredCode.charAt(index)
+                                      : "_"
+                                color: (index < exitKeypadOverlay.enteredCode.length) ? "#2ecc71" : "#7f8c8d"
+                                font.pixelSize: 28
+                                font.bold: true
+                            }
+                        }
+                    }
+                }
+
+                // Numeric Keypad Grid (1-9, CLR, 0, ENTER)
+                Grid {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    columns: 3
+                    spacing: 8
+
+                    Repeater {
+                        model: [
+                            "1", "2", "3",
+                            "4", "5", "6",
+                            "7", "8", "9",
+                            "CLR", "0", "OK"
+                        ]
+
+                        Rectangle {
+                            width: 80
+                            height: 48
+                            color: keyMouse.pressed ? "#00e5ff" : (modelData === "OK" ? "#1e4d2b" : (modelData === "CLR" ? "#4a1c1c" : "#222733"))
+                            border.color: modelData === "OK" ? "#2ecc71" : (modelData === "CLR" ? "#e74c3c" : "#3e4756")
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: keyMouse.pressed ? "#000000" : (modelData === "OK" ? "#2ecc71" : (modelData === "CLR" ? "#e74c3c" : "#ffffff"))
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            MouseArea {
+                                id: keyMouse
+                                anchors.fill: parent
+                                onClicked: {
+                                    if (modelData === "CLR") {
+                                        exitKeypadOverlay.enteredCode = ""
+                                    } else if (modelData === "OK") {
+                                        if (root.levelManagerRef && exitKeypadOverlay.enteredCode.length === 4) {
+                                            root.levelManagerRef.submitOverrideCode(exitKeypadOverlay.enteredCode)
+                                        }
+                                    } else {
+                                        if (exitKeypadOverlay.enteredCode.length < 4) {
+                                            exitKeypadOverlay.enteredCode += modelData
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Cancel Button
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 256
+                    height: 36
+                    color: cancelMouse.pressed ? "#34495e" : "#1a1e28"
+                    border.color: "#7f8c8d"
+                    border.width: 1
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "ABORT / CLOSE [ESC]"
+                        color: "#bdc3c7"
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        id: cancelMouse
+                        anchors.fill: parent
+                        onClicked: {
+                            if (root.levelManagerRef) {
+                                root.levelManagerRef.closeExitKeypad()
                             }
                         }
                     }

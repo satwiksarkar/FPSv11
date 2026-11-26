@@ -18,6 +18,7 @@ Player::Player(QObject *parent)
     , m_pitch(0.0f)
     , m_currentEyeHeight(GameConfig::EYE_HEIGHT_STAND)
     , m_isCrouching(false)
+    , m_isCrawling(false)
     , m_isSprinting(false)
     , m_moveForward(false)
     , m_moveBackward(false)
@@ -130,6 +131,11 @@ bool Player::isCrouching() const
     return m_isCrouching;
 }
 
+bool Player::isCrawling() const
+{
+    return m_isCrawling;
+}
+
 bool Player::isSprinting() const
 {
     return m_isSprinting;
@@ -180,6 +186,15 @@ void Player::handleMouseMove(float deltaX, float deltaY)
 void Player::jump()
 {
     if (m_isGrounded && !isDead()) {
+        if (m_isCrawling) {
+            setCrawl(false);
+            if (m_isCrawling) return; // Blocked under low ceiling
+        }
+        if (m_isCrouching) {
+            setCrouch(false);
+            if (m_isCrouching) return;
+        }
+
         m_verticalVelocity = GameConfig::PLAYER_JUMP_VELOCITY;
         m_isGrounded = false;
         emit groundedChanged(m_isGrounded);
@@ -188,14 +203,77 @@ void Player::jump()
 
 void Player::setCrouch(bool crouch)
 {
-    if (m_isCrouching != crouch) {
-        m_isCrouching = crouch;
-        emit crouchChanged(m_isCrouching);
+    if (m_isCrouching == crouch) return;
+
+    if (!crouch) {
+        // Clearance check before standing
+        if (m_world && m_world->levelManager()) {
+            float curFloor = m_world->levelManager()->getFloorHeightAtWorldPos(m_position.x(), m_position.z());
+            float curCeil = m_world->levelManager()->getCeilingHeightAtWorldPos(m_position.x(), m_position.z());
+            if (curCeil - curFloor < GameConfig::EYE_HEIGHT_STAND + 20.0f) {
+                return; // Low ceiling prevents standing
+            }
+        }
+    } else {
+        if (m_isSprinting) {
+            setSprint(false);
+        }
     }
+
+    m_isCrouching = crouch;
+    emit crouchChanged(m_isCrouching);
+}
+
+void Player::setCrawl(bool crawl)
+{
+    if (m_isCrawling == crawl) return;
+
+    if (!crawl) {
+        // Ceiling clearance check before uncrawling
+        if (m_world && m_world->levelManager()) {
+            float curFloor = m_world->levelManager()->getFloorHeightAtWorldPos(m_position.x(), m_position.z());
+            float curCeil = m_world->levelManager()->getCeilingHeightAtWorldPos(m_position.x(), m_position.z());
+            if (curCeil - curFloor < GameConfig::EYE_HEIGHT_CROUCH + 10.0f) {
+                // Not even enough room to crouch, remain crawling
+                return;
+            }
+            if (curCeil - curFloor < GameConfig::EYE_HEIGHT_STAND + 20.0f) {
+                // Room to crouch but not stand: uncrawl into crouch
+                m_isCrawling = false;
+                emit crawlChanged(m_isCrawling);
+                setCrouch(true);
+                return;
+            }
+        }
+        m_isCrawling = false;
+        emit crawlChanged(m_isCrawling);
+    } else {
+        m_isCrawling = true;
+        if (m_isSprinting) {
+            setSprint(false);
+        }
+        emit crawlChanged(m_isCrawling);
+    }
+}
+
+void Player::toggleCrawl()
+{
+    setCrawl(!m_isCrawling);
 }
 
 void Player::setSprint(bool sprint)
 {
+    if (sprint) {
+        if (m_isCrawling) {
+            setCrawl(false);
+            if (m_isCrawling) return; // Uncrawl blocked by low ceiling
+        }
+        if (m_isCrouching) {
+            setCrouch(false);
+            if (m_isCrouching) return; // Uncrouch blocked by low ceiling
+        }
+    }
+
     if (m_isSprinting != sprint) {
         m_isSprinting = sprint;
         emit sprintChanged(m_isSprinting);
@@ -215,8 +293,13 @@ void Player::update(float deltaTime)
         return;
     }
 
-    // Smooth crouch eye-height transition
-    float targetEyeHeight = m_isCrouching ? GameConfig::EYE_HEIGHT_CROUCH : GameConfig::EYE_HEIGHT_STAND;
+    // Smooth crouch/crawl eye-height transition
+    float targetEyeHeight = GameConfig::EYE_HEIGHT_STAND;
+    if (m_isCrawling) {
+        targetEyeHeight = GameConfig::EYE_HEIGHT_CRAWL;
+    } else if (m_isCrouching) {
+        targetEyeHeight = GameConfig::EYE_HEIGHT_CROUCH;
+    }
     m_currentEyeHeight += (targetEyeHeight - m_currentEyeHeight) * qMin(1.0f, deltaTime * GameConfig::CROUCH_TRANSITION_SPEED);
 
     // Compute forward & right vectors based on camera yaw
@@ -234,9 +317,11 @@ void Player::update(float deltaTime)
         wishDir.normalize();
     }
 
-    // Determine current speed based on crouching and sprinting state
+    // Determine current speed based on crawling, crouching, and sprinting state
     float currentSpeed = GameConfig::PLAYER_WALK_SPEED;
-    if (m_isCrouching) {
+    if (m_isCrawling) {
+        currentSpeed = GameConfig::PLAYER_CRAWL_SPEED;
+    } else if (m_isCrouching) {
         currentSpeed = GameConfig::PLAYER_CROUCH_SPEED;
     } else if (m_isSprinting) {
         currentSpeed = GameConfig::PLAYER_SPRINT_SPEED;
@@ -252,24 +337,41 @@ void Player::update(float deltaTime)
     intendedPos += horizontalMovement;
     intendedPos.setY(intendedPos.y() + m_verticalVelocity * deltaTime);
 
+    // Dynamic Multi-Height Floor & Ceiling queries
+    float floorY = 0.0f;
+    float ceilY = 450.0f;
+    if (m_world && m_world->levelManager()) {
+        floorY = m_world->levelManager()->getFloorHeightAtWorldPos(intendedPos.x(), intendedPos.z());
+        ceilY = m_world->levelManager()->getCeilingHeightAtWorldPos(intendedPos.x(), intendedPos.z());
+    }
+
     // Floor collision
-    if (intendedPos.y() <= 0.0f) {
-        intendedPos.setY(0.0f);
+    if (intendedPos.y() <= floorY) {
+        intendedPos.setY(floorY);
         m_verticalVelocity = 0.0f;
         if (!m_isGrounded) {
             m_isGrounded = true;
             emit groundedChanged(m_isGrounded);
         }
     } else {
-        if (m_isGrounded) {
+        if (m_isGrounded && qAbs(intendedPos.y() - floorY) > 5.0f) {
             m_isGrounded = false;
             emit groundedChanged(m_isGrounded);
         }
     }
 
-    // Collision resolution against arena walls and door
+    // Ceiling head-bonk
+    if (intendedPos.y() + targetEyeHeight >= ceilY) {
+        intendedPos.setY(ceilY - targetEyeHeight);
+        if (m_verticalVelocity > 0.0f) {
+            m_verticalVelocity = 0.0f;
+        }
+    }
+
+    // Collision resolution against arena walls, crates, and doors
+    float colRadius = m_isCrawling ? GameConfig::CRAWL_COLLISION_RADIUS : 35.0f;
     if (m_world) {
-        m_position = m_world->resolveCollision(m_position, intendedPos, 35.0f);
+        m_position = m_world->resolveCollision(m_position, intendedPos, colRadius);
     } else {
         m_position.setX(qBound(-GameConfig::BOUNDARY_LIMIT, intendedPos.x(), GameConfig::BOUNDARY_LIMIT));
         m_position.setY(intendedPos.y());

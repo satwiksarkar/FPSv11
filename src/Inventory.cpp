@@ -2,9 +2,9 @@
 
 Inventory::Inventory(QObject *parent)
     : QObject(parent)
-    , m_foodPacks(1) // Start with 1 Food Pack and 1 Bandage for instant testing
-    , m_bandages(1)
-    , m_medkits(0)
+    , m_foodPacks(2) // Start with 2 Food Packs, 2 Bandages, 1 Medkit
+    , m_bandages(2)
+    , m_medkits(1)
 {
 }
 
@@ -124,8 +124,8 @@ bool Inventory::useMedkit(HealthSystem *targetHealth)
 
 void Inventory::reset()
 {
-    m_foodPacks = 1;
-    m_bandages = 1;
-    m_medkits = 0;
+    m_foodPacks = 2;
+    m_bandages = 2;
+    m_medkits = 1;
     emit inventoryChanged();
 }

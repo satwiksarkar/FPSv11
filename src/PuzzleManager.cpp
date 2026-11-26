@@ -176,65 +176,12 @@ bool PuzzleManager::isPositionBlockedByBarrier(float x, float z) const
 
 int PuzzleManager::findTargetInteractable(const QVector3D &cameraPos, const QVector3D &lookDir, int currentLevel) const
 {
-    if (currentLevel != 1) {
-        return PuzzleNone;
-    }
-
-    // Positions of the interactive entities in Level 1:
-    struct TargetDef {
-        int id;
-        QVector3D pos;
-        float radius;
-    };
-
-    const TargetDef targetsV1[] = {
-        { PuzzleCrane,        QVector3D(1050.0f, 0.0f, 1050.0f), 180.0f },
-        { PuzzleManifestClue, QVector3D(1050.0f, 0.0f, 2750.0f), 180.0f },
-        { PuzzlePower,        QVector3D(3550.0f, 0.0f,  950.0f), 180.0f },
-        { PuzzleResearchFuse, QVector3D(3550.0f, 0.0f, 1650.0f), 180.0f },
-        { PuzzleSecurity,     QVector3D(1350.0f, 0.0f, 3950.0f), 180.0f },
-        { PuzzleAdminClue,    QVector3D( 850.0f, 0.0f, 3150.0f), 180.0f },
-        { PuzzleAdminClue2,   QVector3D(1250.0f, 0.0f, 3550.0f), 180.0f },
-        { PuzzleAdminClue3,   QVector3D(1550.0f, 0.0f, 3050.0f), 180.0f },
-        { PuzzleCoolant,      QVector3D(3850.0f, 0.0f, 3150.0f), 180.0f }
-    };
-
-    const TargetDef targetsV2[] = {
-        { PuzzleCrane,        QVector3D( 850.0f, 0.0f,  950.0f), 180.0f },
-        { PuzzleManifestClue, QVector3D(2450.0f, 0.0f, 5650.0f), 180.0f },
-        { PuzzlePower,        QVector3D(6250.0f, 0.0f, 1050.0f), 180.0f },
-        { PuzzleResearchFuse, QVector3D(6050.0f, 0.0f, 1850.0f), 180.0f },
-        { PuzzleSecurity,     QVector3D(1550.0f, 0.0f, 7050.0f), 180.0f },
-        { PuzzleAdminClue,    QVector3D(1050.0f, 0.0f, 5750.0f), 180.0f },
-        { PuzzleAdminClue2,   QVector3D( 850.0f, 0.0f, 6450.0f), 180.0f },
-        { PuzzleAdminClue3,   QVector3D(2050.0f, 0.0f, 6750.0f), 180.0f },
-        { PuzzleCoolant,      QVector3D(6250.0f, 0.0f, 6650.0f), 180.0f }
-    };
-
-    const TargetDef *targets = (m_level1Variant == 2) ? targetsV2 : targetsV1;
-    const int targetCount = (m_level1Variant == 2) ? sizeof(targetsV2)/sizeof(targetsV2[0]) : sizeof(targetsV1)/sizeof(targetsV1[0]);
-
-    QVector3D normDir = lookDir.normalized();
-    float bestDot = 0.65f; // Must look within ~50 degrees
-    int bestId = PuzzleNone;
-    float bestDist = 250.0f; // Max interaction distance
-
-    for (int i = 0; i < targetCount; ++i) {
-        const auto &t = targets[i];
-        QVector3D toTarget = t.pos - cameraPos;
-        toTarget.setY(0.0f); // Horizontal plane raycast
-        float dist = toTarget.length();
-        if (dist > t.radius && dist > bestDist) continue;
-
-        QVector3D dirToTarget = toTarget.normalized();
-        float dot = QVector3D::dotProduct(normDir, dirToTarget);
-        if (dot > bestDot) {
-            bestDot = dot;
-            bestId = t.id;
-        }
-    }
-
-    return bestId;
+    Q_UNUSED(cameraPos);
+    Q_UNUSED(lookDir);
+    Q_UNUSED(currentLevel);
+    // In Level 1 Fabrication Floors, puzzles are the 3 shootable power relays and exit keypad.
+    // Legacy modal puzzles (Coolant Console, Shipping Manifest, Archive Clues) are deactivated.
+    return PuzzleNone;
 }
 
 void PuzzleManager::updateInteraction(float deltaTime,

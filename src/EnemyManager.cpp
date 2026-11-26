@@ -126,6 +126,13 @@ Enemy* EnemyManager::findInactiveEnemy(Enemy::EnemyType type)
 
 bool EnemyManager::spawnDrone(const QVector3D &position)
 {
+    // Varied drone machine types: roughly 50% are shooter gunships, 50% are rapid melee shock drones
+    bool isShooter = (QRandomGenerator::global()->bounded(100) < 50);
+    return spawnDrone(position, isShooter);
+}
+
+bool EnemyManager::spawnDrone(const QVector3D &position, bool canShoot)
+{
     if (activeCount() >= GameConfig::MAX_ACTIVE_ENEMIES) {
         qDebug() << "[EnemyManager] Cannot spawn Drone: MAX_ACTIVE_ENEMIES reached (" << activeCount() << ")";
         return false;
@@ -137,10 +144,7 @@ bool EnemyManager::spawnDrone(const QVector3D &position)
         return false;
     }
 
-    // Varied drone machine types: roughly 50% are shooter gunships, 50% are rapid melee shock drones
-    bool isShooter = (QRandomGenerator::global()->bounded(100) < 50);
-    e->setCanShoot(isShooter);
-
+    e->setCanShoot(canShoot);
     e->setWorld(m_world);
     e->respawn(position);
     emit enemySpawned(e);

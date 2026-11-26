@@ -279,9 +279,10 @@ Node {
         ]
     }
 
-    // Single large flat ceiling box (raised to 600 in Level 3 for grand cathedral arena)
+    // Single large flat ceiling box for Level 2 & 3 (raised to 600 in Level 3 for grand cathedral arena)
     Model {
         id: ceilingBox
+        visible: root.levelManager && root.levelManager.currentLevel !== 1
         source: "#Cube"
         scale: Qt.vector3d(root.mapWidthUnits / 100.0, 0.2, root.mapHeightUnits / 100.0)
         position: Qt.vector3d(root.mapWidthUnits * 0.5, (root.levelManager && root.levelManager.currentLevel === 3) ? 600 : 310, root.mapHeightUnits * 0.5)
@@ -291,6 +292,41 @@ Node {
                 roughness: 0.95
             }
         ]
+    }
+
+    // Level 1 Sectional Ceilings (leaves Shooting Gallery open to high ceiling at Y=750)
+    Node {
+        id: level1Ceilings
+        visible: root.levelManager && root.levelManager.currentLevel === 1
+
+        // West Sector Ceiling (X: 0..3300, Z: 0..4800, Y=310)
+        Model {
+            position: Qt.vector3d(1650, 310, 2400)
+            source: "#Cube"
+            scale: Qt.vector3d(33.0, 0.2, 48.0)
+            materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+        }
+        // East Border Corridor Ceiling (X: 4300..4800, Z: 0..4800, Y=310)
+        Model {
+            position: Qt.vector3d(4550, 310, 2400)
+            source: "#Cube"
+            scale: Qt.vector3d(5.0, 0.2, 48.0)
+            materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+        }
+        // Northeast Sector Ceiling above Mixed Vault (X: 3300..4300, Z: 0..2400, Y=310)
+        Model {
+            position: Qt.vector3d(3800, 310, 1200)
+            source: "#Cube"
+            scale: Qt.vector3d(10.0, 0.2, 24.0)
+            materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+        }
+        // Southeast Border Ceiling below Shooting Gallery (X: 3300..4300, Z: 3600..4800, Y=310)
+        Model {
+            position: Qt.vector3d(3800, 310, 4200)
+            source: "#Cube"
+            scale: Qt.vector3d(10.0, 0.2, 12.0)
+            materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+        }
     }
 
     // ==================== EXIT PLATFORM MARKER (TILES 4, 6 & 11) ====================
@@ -410,680 +446,748 @@ Node {
         id: level1PuzzlesNode
         visible: root.levelManager && root.levelManager.currentLevel === 1
 
-        // 1. Cargo Warehouse: Crane Control Console & Blocking Containers
+        // ==================== 1. CENTRAL SPINE: COVER PILLARS & SPRINT SENSORS ====================
         Node {
-            id: cargoCraneGroup
+            id: centralSpineGroup
+
+            // Staggered Full-Height Cover Pillars (Ceiling: 4.5m = 450 units)
             Model {
-                position: Qt.vector3d(850, 45, 950)
+                position: Qt.vector3d(2250, 225, 3350)
                 source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.9, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.5; metalness: 0.8 } ]
+                scale: Qt.vector3d(0.8, 4.5, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.7; metalness: 0.5 } ]
             }
             Model {
-                position: Qt.vector3d(850, 95, 950)
+                position: Qt.vector3d(2450, 225, 2850)
                 source: "#Cube"
-                scale: Qt.vector3d(0.5, 0.35, 0.08)
-                materials: [ PrincipledMaterial {
-                    baseColor: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
-                    lighting: PrincipledMaterial.NoLighting
-                } ]
+                scale: Qt.vector3d(0.8, 4.5, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.7; metalness: 0.5 } ]
             }
-            PointLight {
-                position: Qt.vector3d(850, 110, 950)
-                color: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
-                brightness: 3.5
+            Model {
+                position: Qt.vector3d(2250, 225, 2250)
+                source: "#Cube"
+                scale: Qt.vector3d(0.8, 4.5, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.7; metalness: 0.5 } ]
+            }
+            Model {
+                position: Qt.vector3d(2450, 225, 1750)
+                source: "#Cube"
+                scale: Qt.vector3d(0.8, 4.5, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.7; metalness: 0.5 } ]
             }
 
-            // 3 Heavy Containers Blocking K1 Alcove (Row 6..7, Col 9)
+            // --- Sprint Sensor 1 (South Spine: Row 36, Z=3650) ---
             Node {
-                property real hoistY: (root.puzzleManager && root.puzzleManager.craneSolved) ? 280.0 : 75.0
-                Behavior on hoistY { NumberAnimation { duration: 1500; easing.type: Easing.InOutQuad } }
-
-                position: Qt.vector3d(950, hoistY, 700)
-
+                position: Qt.vector3d(2350, 0, 3650)
+                // Left & Right Laser Emitters
                 Model {
-                    position: Qt.vector3d(0, 0, -45)
+                    position: Qt.vector3d(-180, 50, 0)
                     source: "#Cube"
-                    scale: Qt.vector3d(0.9, 1.5, 0.8)
-                    materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.6 } ]
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, 0, 45)
+                    position: Qt.vector3d(180, 50, 0)
                     source: "#Cube"
-                    scale: Qt.vector3d(0.9, 1.5, 0.8)
-                    materials: [ PrincipledMaterial { baseColor: "#2980b9"; roughness: 0.6 } ]
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
+                }
+                // Floor Laser Trip Beam across corridor
+                Model {
+                    position: Qt.vector3d(0, 8, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(3.6, 0.08, 0.08)
+                    materials: [ PrincipledMaterial {
+                        baseColor: "#f39c12"
+                        lighting: PrincipledMaterial.NoLighting
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 30, 0)
+                    color: "#f39c12"
+                    brightness: 3.5
                 }
             }
 
-            // Warehouse Office Shipping Log Desk at (1950, 0, 850)
-            Model {
-                position: Qt.vector3d(1950, 35, 850)
-                source: "#Cube"
-                scale: Qt.vector3d(1.1, 0.7, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.7 } ]
+            // --- Sprint Sensor 2 (Mid Spine: Row 25, Z=2550) ---
+            Node {
+                position: Qt.vector3d(2350, 0, 2550)
+                Model {
+                    position: Qt.vector3d(-180, 50, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
+                }
+                Model {
+                    position: Qt.vector3d(180, 50, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 8, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(3.6, 0.08, 0.08)
+                    materials: [ PrincipledMaterial {
+                        baseColor: "#f39c12"
+                        lighting: PrincipledMaterial.NoLighting
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 30, 0)
+                    color: "#f39c12"
+                    brightness: 3.5
+                }
             }
-            Model {
-                position: Qt.vector3d(1950, 72, 850)
-                source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.04, 0.25)
-                materials: [ PrincipledMaterial { baseColor: "#f1c40f"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            PointLight {
-                position: Qt.vector3d(1950, 85, 850)
-                color: "#f39c12"
-                brightness: 2.2
+
+            // --- Sprint Sensor 3 (North Spine: Row 15, Z=1550) ---
+            Node {
+                position: Qt.vector3d(2350, 0, 1550)
+                Model {
+                    position: Qt.vector3d(-180, 50, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
+                }
+                Model {
+                    position: Qt.vector3d(180, 50, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.25, 1.0, 0.25)
+                    materials: [ PrincipledMaterial { baseColor: "#e67e22"; roughness: 0.3; metalness: 0.8 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 8, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(3.6, 0.08, 0.08)
+                    materials: [ PrincipledMaterial {
+                        baseColor: "#f39c12"
+                        lighting: PrincipledMaterial.NoLighting
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 30, 0)
+                    color: "#f39c12"
+                    brightness: 3.5
+                }
             }
         }
 
-        // 2. Research Laboratories: Power Routing Terminal & Containment Field
+        // ==================== 2. KEY 1: KITING BAY (SOUTHWEST) ====================
         Node {
-            id: researchPowerGroup
-            Model {
-                position: Qt.vector3d(6250, 45, 1050)
-                source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.9, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.4; metalness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(6250, 95, 1050)
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 0.35, 0.08)
-                materials: [ PrincipledMaterial {
-                    baseColor: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00e5ff"
-                    lighting: PrincipledMaterial.NoLighting
-                } ]
-            }
-            PointLight {
-                position: Qt.vector3d(6250, 110, 1050)
-                color: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00e5ff"
-                brightness: 3.5
-            }
+            id: kitingBayGroup
 
-            // Containment Plasma Field across Row 10, Cols 64..65
+            // Central 4x4 Fabrication Machine for circle-strafing (Rows 30..31, Cols 9..10 -> X=950, Z=3050)
             Model {
-                visible: root.puzzleManager ? !root.puzzleManager.powerSolved : true
-                position: Qt.vector3d(6500, 150, 1050)
+                position: Qt.vector3d(950, 110, 3050)
                 source: "#Cube"
-                scale: Qt.vector3d(1.8, 3.0, 0.15)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#00e5ff"
-                    opacity: 0.55
-                    lighting: PrincipledMaterial.NoLighting
-                } ]
-            }
-            PointLight {
-                position: Qt.vector3d(6500, 150, 1050)
-                color: "#00e5ff"
-                brightness: 6.0
-                visible: root.puzzleManager ? !root.puzzleManager.powerSolved : true
-            }
-
-            // Activated Containment Ceiling Floodlight on success
-            PointLight {
-                position: Qt.vector3d(7100, 240, 750)
-                color: "#74b9ff"
-                brightness: 8.0
-                visible: root.puzzleManager && root.puzzleManager.powerSolved
-            }
-
-            // Electrical Control Room: 200A Ceramic Fuse at (6050, 0, 1850)
-            Model {
-                position: Qt.vector3d(6050, 30, 1850)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.4, 0.6, 0.4)
-                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5 } ]
-            }
-            Model {
-                visible: root.puzzleManager ? !root.puzzleManager.fuseCollected : true
-                position: Qt.vector3d(6050, 68, 1850)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.12, 0.28, 0.12)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            PointLight {
-                visible: root.puzzleManager ? !root.puzzleManager.fuseCollected : true
-                position: Qt.vector3d(6050, 75, 1850)
-                color: "#00e5ff"
-                brightness: 3.0
-            }
-        }
-
-        // 3. Administration Block: Security Keypad & Supervisor Directive Desk & Laser Gate
-        Node {
-            id: adminSecurityGroup
-            Model {
-                position: Qt.vector3d(1550, 110, 7050)
-                source: "#Cube"
-                scale: Qt.vector3d(0.12, 0.45, 0.35)
-                materials: [ PrincipledMaterial {
-                    baseColor: (root.puzzleManager && root.puzzleManager.securitySolved) ? "#2ecc71" : "#e74c3c"
-                    lighting: PrincipledMaterial.NoLighting
-                } ]
-            }
-            PointLight {
-                position: Qt.vector3d(1530, 110, 7050)
-                color: (root.puzzleManager && root.puzzleManager.securitySolved) ? "#2ecc71" : "#e74c3c"
-                brightness: 3.0
-            }
-
-            // Supervisor Directive Desk at (850, 0, 6450)
-            Model {
-                position: Qt.vector3d(850, 35, 6450)
-                source: "#Cube"
-                scale: Qt.vector3d(1.2, 0.7, 0.8)
-                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(850, 72, 6450)
-                source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.05, 0.25)
-                materials: [ PrincipledMaterial { baseColor: "#f39c12"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            PointLight {
-                position: Qt.vector3d(850, 85, 6450)
-                color: "#f39c12"
-                brightness: 2.5
-            }
-
-            // Clue 1: Reception Desk at (1050, 0, 5750)
-            Model {
-                position: Qt.vector3d(1050, 35, 5750)
-                source: "#Cube"
-                scale: Qt.vector3d(1.1, 0.7, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(1050, 72, 5750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.3, 0.04, 0.22)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            PointLight {
-                position: Qt.vector3d(1050, 85, 5750)
-                color: "#00e5ff"
-                brightness: 2.2
-            }
-
-            // Clue 3: Archive Terminal at (2050, 0, 6750)
-            Model {
-                position: Qt.vector3d(2050, 45, 6750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.9, 0.6)
-                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5 } ]
-            }
-            Model {
-                position: Qt.vector3d(2050, 95, 6750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.45, 0.35, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            PointLight {
-                position: Qt.vector3d(2050, 110, 6750)
-                color: "#2ecc71"
-                brightness: 2.5
-            }
-
-            // Laser Gate Barrier across Row 70, Cols 12..13
-            Model {
-                visible: root.puzzleManager ? !root.puzzleManager.securitySolved : true
-                position: Qt.vector3d(1300, 150, 7050)
-                source: "#Cube"
-                scale: Qt.vector3d(1.8, 3.0, 0.15)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#e74c3c"
-                    opacity: 0.65
-                    lighting: PrincipledMaterial.NoLighting
-                } ]
-            }
-            PointLight {
-                position: Qt.vector3d(1300, 150, 7050)
-                color: "#e74c3c"
-                brightness: 5.0
-                visible: root.puzzleManager ? !root.puzzleManager.securitySolved : true
-            }
-        }
-
-        // 4. Maintenance & Utilities: Coolant Valve Manifold & Substation Interlock Gate
-        Node {
-            id: maintenanceCoolantGroup
-            Model {
-                position: Qt.vector3d(6250, 45, 6650)
-                source: "#Cube"
-                scale: Qt.vector3d(1.1, 0.9, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#2d3436"; roughness: 0.6; metalness: 0.8 } ]
-            }
-            Model {
-                position: Qt.vector3d(6210, 95, 6650)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.18, 0.12, 0.18)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
-            }
-            Model {
-                position: Qt.vector3d(6250, 95, 6650)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.18, 0.12, 0.18)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
-            }
-            Model {
-                position: Qt.vector3d(6290, 95, 6650)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.18, 0.12, 0.18)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff" } ]
-            }
-            PointLight {
-                position: Qt.vector3d(6250, 120, 6650)
-                color: (root.puzzleManager && root.puzzleManager.coolantSolved) ? "#f1c40f" : "#e67e22"
-                brightness: 3.5
-            }
-
-            // Substation Interlock Gate at Row 72, Col 68
-            Model {
-                visible: root.puzzleManager ? !root.puzzleManager.coolantSolved : true
-                position: Qt.vector3d(6850, 150, 7250)
-                source: "#Cube"
-                scale: Qt.vector3d(0.2, 3.0, 1.0)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#f39c12"
-                    roughness: 0.5
-                    metalness: 0.8
-                } ]
-            }
-
-            // Backup Generator Turbine Floodlight on success
-            PointLight {
-                position: Qt.vector3d(7100, 250, 7200)
-                color: "#ffeaa7"
-                brightness: 9.0
-                visible: root.puzzleManager && root.puzzleManager.coolantSolved
-            }
-        }
-
-        // ==================== 5. DETAILED ROOM INTERIORS (DESKS, CHAIRS, WORKSTATIONS) ====================
-        Node {
-            id: level1RoomInteriors
-
-            // ----- A. WAREHOUSE OFFICE INTERIORS (Rows 6..12, Cols 18..24) -----
-            // Chief Logistics Desk at (1950, 0, 850)
-            Model {
-                position: Qt.vector3d(1950, 35, 850)
-                source: "#Cube"
-                scale: Qt.vector3d(1.4, 0.7, 0.8)
-                materials: [ PrincipledMaterial { baseColor: "#3e2723"; roughness: 0.6 } ] // Mahogany wood desk
-            }
-            // Monitor on Desk
-            Model {
-                position: Qt.vector3d(1950, 78, 830)
-                source: "#Cube"
-                scale: Qt.vector3d(0.45, 0.35, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            // Office Swivel Chair behind Desk at (1950, 0, 910)
-            Model {
-                position: Qt.vector3d(1950, 22, 910)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.35, 0.44, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#212121"; roughness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(1950, 52, 925)
-                source: "#Cube"
-                scale: Qt.vector3d(0.38, 0.48, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#37474f"; roughness: 0.8 } ]
-            }
-            // Assistant Desk at (2200, 0, 950)
-            Model {
-                position: Qt.vector3d(2200, 35, 950)
-                source: "#Cube"
-                scale: Qt.vector3d(1.3, 0.7, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#455a64"; roughness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(2200, 78, 930)
-                source: "#Cube"
-                scale: Qt.vector3d(0.4, 0.3, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            Model {
-                position: Qt.vector3d(2200, 22, 1000)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.35, 0.44, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#212121"; roughness: 0.7 } ]
-            }
-            // Office Metal Filing Cabinets along north wall
-            Model {
-                position: Qt.vector3d(1800, 70, 650)
-                source: "#Cube"
-                scale: Qt.vector3d(0.6, 1.4, 0.5)
-                materials: [ PrincipledMaterial { baseColor: "#546e7a"; roughness: 0.5; metalness: 0.6 } ]
-            }
-            Model {
-                position: Qt.vector3d(2050, 70, 650)
-                source: "#Cube"
-                scale: Qt.vector3d(0.6, 1.4, 0.5)
-                materials: [ PrincipledMaterial { baseColor: "#546e7a"; roughness: 0.5; metalness: 0.6 } ]
-            }
-            // Water Cooler at (2300, 0, 750)
-            Model {
-                position: Qt.vector3d(2300, 45, 750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.9, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#eceff1"; roughness: 0.4 } ]
-            }
-            Model {
-                position: Qt.vector3d(2300, 100, 750)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.28, 0.35, 0.28)
-                materials: [ PrincipledMaterial { baseColor: "#00bcd4"; opacity: 0.7; roughness: 0.2 } ]
-            }
-
-            // ----- B. CARGO STORAGE & RECEIVING BAY (Rows 4..16, Cols 6..16) -----
-            // Industrial Steel Workbench at (750, 0, 1450)
-            Model {
-                position: Qt.vector3d(750, 40, 1450)
-                source: "#Cube"
-                scale: Qt.vector3d(1.8, 0.8, 0.8)
-                materials: [ PrincipledMaterial { baseColor: "#37474f"; roughness: 0.6; metalness: 0.8 } ]
-            }
-            // Tool chest on bench
-            Model {
-                position: Qt.vector3d(720, 88, 1450)
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 0.25, 0.3)
-                materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.5; metalness: 0.4 } ]
-            }
-            // Oil drums & chemical barrels
-            Model {
-                position: Qt.vector3d(650, 40, 1550)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.42, 0.8, 0.42)
-                materials: [ PrincipledMaterial { baseColor: "#f39c12"; roughness: 0.5; metalness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(700, 40, 1550)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.42, 0.8, 0.42)
-                materials: [ PrincipledMaterial { baseColor: "#2980b9"; roughness: 0.5; metalness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(675, 40, 1600)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.42, 0.8, 0.42)
-                materials: [ PrincipledMaterial { baseColor: "#27ae60"; roughness: 0.5; metalness: 0.7 } ]
-            }
-
-            // ----- C. RESEARCH LABORATORIES (Rows 6..14, Cols 56..68) -----
-            // Central Science Lab Workbench at (6000, 0, 900)
-            Model {
-                position: Qt.vector3d(6000, 40, 900)
-                source: "#Cube"
-                scale: Qt.vector3d(2.0, 0.8, 0.9)
-                materials: [ PrincipledMaterial { baseColor: "#eceff1"; roughness: 0.3; metalness: 0.5 } ]
-            }
-            // Chemical Flasks & Beakers on bench
-            Model {
-                position: Qt.vector3d(5950, 88, 900)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.12, 0.22, 0.12)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            Model {
-                position: Qt.vector3d(6050, 88, 900)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.12, 0.22, 0.12)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            // Lab Stools
-            Model {
-                position: Qt.vector3d(6000, 25, 965)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.3, 0.5, 0.3)
-                materials: [ PrincipledMaterial { baseColor: "#455a64"; roughness: 0.6 } ]
-            }
-            // Analysis Station 2 at (6450, 0, 900)
-            Model {
-                position: Qt.vector3d(6450, 40, 900)
-                source: "#Cube"
-                scale: Qt.vector3d(1.8, 0.8, 0.9)
-                materials: [ PrincipledMaterial { baseColor: "#eceff1"; roughness: 0.3; metalness: 0.5 } ]
-            }
-            Model {
-                position: Qt.vector3d(6450, 88, 880)
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 0.35, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#37474f"; roughness: 0.5; metalness: 0.7 } ]
-            }
-            // High-density Server Racks with LED arrays at (5750, 0, 750) and (5750, 0, 950)
-            Model {
-                position: Qt.vector3d(5750, 90, 750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.65, 1.8, 0.9)
-                materials: [ PrincipledMaterial { baseColor: "#1a1a24"; roughness: 0.4; metalness: 0.8 } ]
-            }
-            Model {
-                position: Qt.vector3d(5720, 90, 750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.04, 1.4, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            Model {
-                position: Qt.vector3d(5750, 90, 950)
-                source: "#Cube"
-                scale: Qt.vector3d(0.65, 1.8, 0.9)
-                materials: [ PrincipledMaterial { baseColor: "#1a1a24"; roughness: 0.4; metalness: 0.8 } ]
-            }
-            Model {
-                position: Qt.vector3d(5720, 90, 950)
-                source: "#Cube"
-                scale: Qt.vector3d(0.04, 1.4, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-
-            // ----- D. ADMINISTRATION SECTOR (Rows 55..75, Cols 6..24) -----
-            // Reception Counter & Waiting Area (Rows 55..60, Cols 8..14)
-            Model {
-                position: Qt.vector3d(1050, 38, 5750)
-                source: "#Cube"
-                scale: Qt.vector3d(1.5, 0.76, 0.6)
-                materials: [ PrincipledMaterial { baseColor: "#263238"; roughness: 0.5 } ]
-            }
-            Model {
-                position: Qt.vector3d(1050, 80, 5730)
-                source: "#Cube"
-                scale: Qt.vector3d(0.4, 0.3, 0.06)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-            Model {
-                position: Qt.vector3d(1050, 22, 5790)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.32, 0.44, 0.32)
-                materials: [ PrincipledMaterial { baseColor: "#212121"; roughness: 0.8 } ]
-            }
-            // Waiting Room Guest Sofa & Coffee Table at (1300, 0, 5850)
-            Model {
-                position: Qt.vector3d(1300, 25, 5850)
-                source: "#Cube"
-                scale: Qt.vector3d(1.6, 0.5, 0.65)
-                materials: [ PrincipledMaterial { baseColor: "#1a237e"; roughness: 0.8 } ] // Navy leather sofa
-            }
-            Model {
-                position: Qt.vector3d(1300, 50, 5880)
-                source: "#Cube"
-                scale: Qt.vector3d(1.6, 0.5, 0.15)
-                materials: [ PrincipledMaterial { baseColor: "#1a237e"; roughness: 0.8 } ] // Sofa backrest
-            }
-            Model {
-                position: Qt.vector3d(1300, 20, 5760)
-                source: "#Cube"
-                scale: Qt.vector3d(1.0, 0.4, 0.5)
-                materials: [ PrincipledMaterial { baseColor: "#3e2723"; roughness: 0.5 } ] // Coffee table
-            }
-
-            // Executive Conference Room (Rows 62..68, Cols 14..20 around 1700, 0, 6450)
-            // Grand Conference Table (240x100 units)
-            Model {
-                position: Qt.vector3d(1700, 36, 6450)
-                source: "#Cube"
-                scale: Qt.vector3d(2.4, 0.72, 1.0)
-                materials: [ PrincipledMaterial { baseColor: "#2b1b17"; roughness: 0.4 } ] // Dark walnut table
-            }
-            // 6 Conference Chairs around table
-            Model { position: Qt.vector3d(1550, 22, 6380); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(1700, 22, 6380); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(1850, 22, 6380); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(1550, 22, 6520); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(1700, 22, 6520); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(1850, 22, 6520); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            // Wall Presentation Display on north wall at (1700, 160, 6220)
-            Model {
-                position: Qt.vector3d(1700, 160, 6220)
-                source: "#Cube"
-                scale: Qt.vector3d(1.8, 1.1, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-
-            // Supervisor Office (Rows 62..68, Cols 6..12 around 850, 0, 6450)
-            Model {
-                position: Qt.vector3d(850, 35, 6450)
-                source: "#Cube"
-                scale: Qt.vector3d(1.5, 0.7, 0.8)
-                materials: [ PrincipledMaterial { baseColor: "#3e2723"; roughness: 0.5 } ]
-            }
-            Model {
-                position: Qt.vector3d(850, 22, 6520)
-                source: "#Cylinder"
-                scale: Qt.vector3d(0.36, 0.44, 0.36)
-                materials: [ PrincipledMaterial { baseColor: "#212121"; roughness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(850, 56, 6535)
-                source: "#Cube"
-                scale: Qt.vector3d(0.42, 0.55, 0.08)
-                materials: [ PrincipledMaterial { baseColor: "#424242"; roughness: 0.8 } ] // High-back leather chair
-            }
-            // 2 Visitor chairs in front of desk
-            Model { position: Qt.vector3d(780, 22, 6370); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-            Model { position: Qt.vector3d(920, 22, 6370); source: "#Cylinder"; scale: Qt.vector3d(0.3, 0.44, 0.3); materials: [ PrincipledMaterial { baseColor: "#37474f" } ] }
-
-            // Archive Storage Shelving Units (Rows 65..72, Cols 18..24 around 2050, 0, 6750)
-            Model {
-                position: Qt.vector3d(2050, 80, 6650)
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 1.6, 1.6)
-                materials: [ PrincipledMaterial { baseColor: "#455a64"; roughness: 0.6; metalness: 0.7 } ]
-            }
-            Model {
-                position: Qt.vector3d(2050, 80, 6950)
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 1.6, 1.6)
-                materials: [ PrincipledMaterial { baseColor: "#455a64"; roughness: 0.6; metalness: 0.7 } ]
-            }
-
-            // ----- E. MAINTENANCE & WORKSHOP (Rows 60..74, Cols 56..74) -----
-            // Heavy Mechanical Workbenches
-            Model {
-                position: Qt.vector3d(6450, 42, 6350)
-                source: "#Cube"
-                scale: Qt.vector3d(2.0, 0.84, 0.8)
-                materials: [ PrincipledMaterial { baseColor: "#263238"; roughness: 0.5; metalness: 0.85 } ]
-            }
-            // Rows of Worker Storage Lockers at (6850, 0, 6150)
-            Model {
-                position: Qt.vector3d(6850, 85, 6150)
-                source: "#Cube"
-                scale: Qt.vector3d(1.8, 1.7, 0.5)
-                materials: [ PrincipledMaterial { baseColor: "#37474f"; roughness: 0.6; metalness: 0.7 } ]
-            }
-            // Oil drums & fuel canisters at (7150, 0, 6750)
-            Model { position: Qt.vector3d(7150, 40, 6750); source: "#Cylinder"; scale: Qt.vector3d(0.42, 0.8, 0.42); materials: [ PrincipledMaterial { baseColor: "#f39c12"; roughness: 0.6; metalness: 0.6 } ] }
-            Model { position: Qt.vector3d(7200, 40, 6750); source: "#Cylinder"; scale: Qt.vector3d(0.42, 0.8, 0.42); materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.6; metalness: 0.6 } ] }
-            Model { position: Qt.vector3d(7175, 40, 6800); source: "#Cylinder"; scale: Qt.vector3d(0.42, 0.8, 0.42); materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.6; metalness: 0.6 } ] }
-
-            // ----- F. CENTRAL CHECKPOINT & SCANNING GATE (Rows 36..44, Cols 36..44) -----
-            // Security Scanner Archway Portal at (4000, 0, 3750)
-            Model {
-                position: Qt.vector3d(3940, 100, 3750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.12, 2.0, 0.3)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; roughness: 0.4; metalness: 0.8 } ]
-            }
-            Model {
-                position: Qt.vector3d(4060, 100, 3750)
-                source: "#Cube"
-                scale: Qt.vector3d(0.12, 2.0, 0.3)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; roughness: 0.4; metalness: 0.8 } ]
-            }
-            Model {
-                position: Qt.vector3d(4000, 200, 3750)
-                source: "#Cube"
-                scale: Qt.vector3d(1.3, 0.15, 0.3)
-                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; roughness: 0.4; metalness: 0.8 } ]
-            }
-            PointLight {
-                position: Qt.vector3d(4000, 190, 3750)
-                color: "#00e5ff"
-                brightness: 3.0
-            }
-            // Guard Inspection Podium at (3850, 0, 3900)
-            Model {
-                position: Qt.vector3d(3850, 45, 3900)
-                source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.9, 0.6)
-                materials: [ PrincipledMaterial { baseColor: "#37474f"; roughness: 0.6 } ]
-            }
-            Model {
-                position: Qt.vector3d(3850, 95, 3890)
-                source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.25, 0.06)
-                materials: [ PrincipledMaterial { baseColor: "#f1c40f"; lighting: PrincipledMaterial.NoLighting } ]
-            }
-        }
-
-        // ==================== 6. TOXIC GAS LEAK VOLUMETRIC HAZE & EXHAUST SWITCHES ====================
-        Node {
-            id: level1GasLeakHaze
-            visible: root.levelManager && root.levelManager.currentLevel === 1 && root.levelManager.gasLeakActive
-            position: root.levelManager ? root.levelManager.gasStationPosition : Qt.vector3d(0, 0, 0)
-
-            // Toxic green gas smoke columns
-            Model {
-                position: Qt.vector3d(0, 100, 0)
-                source: "#Cylinder"
                 scale: Qt.vector3d(3.5, 2.2, 3.5)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; opacity: 0.45; lighting: PrincipledMaterial.NoLighting } ]
+                materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.6; metalness: 0.8 } ]
             }
+            // Machine Core Column
             Model {
-                position: Qt.vector3d(40, 110, -30)
+                position: Qt.vector3d(950, 240, 3050)
                 source: "#Cylinder"
-                scale: Qt.vector3d(2.8, 2.0, 2.8)
-                materials: [ PrincipledMaterial { baseColor: "#27ae60"; opacity: 0.40; lighting: PrincipledMaterial.NoLighting } ]
+                scale: Qt.vector3d(2.0, 1.4, 2.0)
+                materials: [ PrincipledMaterial { baseColor: "#00e5ff"; roughness: 0.2; metalness: 0.9; lighting: PrincipledMaterial.NoLighting } ]
             }
-            Model {
-                position: Qt.vector3d(-40, 95, 35)
-                source: "#Cylinder"
-                scale: Qt.vector3d(3.0, 2.1, 3.0)
-                materials: [ PrincipledMaterial { baseColor: "#a8ff78"; opacity: 0.38; lighting: PrincipledMaterial.NoLighting } ]
+            PointLight {
+                position: Qt.vector3d(950, 260, 3050)
+                color: "#00e5ff"
+                brightness: 5.0
             }
-            // Emergency Gas Isolation Console
+
+            // Wall Monitor displaying Security Digit K1
+            Node {
+                position: Qt.vector3d(950, 150, 2615)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.4, 0.9, 0.1)
+                    materials: [ PrincipledMaterial { baseColor: "#0d1117"; roughness: 0.5 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 0, 6)
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.2, 0.7, 0.05)
+                    materials: [ DefaultMaterial {
+                        diffuseMap: Texture {
+                            sourceItem: Rectangle {
+                                width: 256; height: 160
+                                color: "#050d1a"
+                                border.color: "#00e5ff"
+                                border.width: 4
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "SECTOR K1"
+                                        color: "#7f8c8d"
+                                        font.pixelSize: 22
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "ACCESS KEY 1"
+                                        color: "#00e5ff"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 0, 15)
+                    color: "#00e5ff"
+                    brightness: 3.0
+                }
+            }
+        }
+
+        // ==================== 3. KEY 2: SHOOTING GALLERY (SOUTHEAST) ====================
+        Node {
+            id: shootingGalleryGroup
+
+            // --- Tall Enclosure Architecture (Ceiling Y=750, Height=7.5m) ---
+            // High Ceiling Slab (3300..4300, 2400..3600, Y=750)
             Model {
-                position: Qt.vector3d(0, 45, 0)
+                position: Qt.vector3d(3800, 750, 3000)
                 source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.9, 0.7)
-                materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.5; metalness: 0.8 } ]
+                scale: Qt.vector3d(10.2, 0.2, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+            }
+
+            // Upper Perimeter Enclosing Walls (Y: 300 to 750, Height=450, Center Y=525)
+            // North Upper Wall (Z=2400)
+            Model {
+                position: Qt.vector3d(3800, 525, 2400)
+                source: "#Cube"
+                scale: Qt.vector3d(10.2, 4.5, 0.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // South Upper Wall (Z=3600)
+            Model {
+                position: Qt.vector3d(3800, 525, 3600)
+                source: "#Cube"
+                scale: Qt.vector3d(10.2, 4.5, 0.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // East Upper Wall (X=4300)
+            Model {
+                position: Qt.vector3d(4300, 525, 3000)
+                source: "#Cube"
+                scale: Qt.vector3d(0.2, 4.5, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // West Upper Wall Partition above 3m entrance doorway (X=3300)
+            Model {
+                position: Qt.vector3d(3300, 525, 3000)
+                source: "#Cube"
+                scale: Qt.vector3d(0.2, 4.5, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+
+            // Overhead Industrial Steel Rafter Beams (Y=620)
+            Model {
+                position: Qt.vector3d(3800, 620, 2750)
+                source: "#Cube"
+                scale: Qt.vector3d(10.0, 0.4, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
             }
             Model {
-                position: Qt.vector3d(0, 95, 0)
+                position: Qt.vector3d(3800, 620, 3050)
+                source: "#Cube"
+                scale: Qt.vector3d(10.0, 0.4, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
+            }
+            Model {
+                position: Qt.vector3d(3800, 620, 3350)
+                source: "#Cube"
+                scale: Qt.vector3d(10.0, 0.4, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
+            }
+
+            // Overhead Industrial Floodlights
+            PointLight {
+                position: Qt.vector3d(3650, 680, 2900)
+                color: "#f0f6fc"
+                brightness: 6.0
+            }
+            PointLight {
+                position: Qt.vector3d(3950, 680, 3200)
+                color: "#f0f6fc"
+                brightness: 6.0
+            }
+
+            // Staggered Waist-High Firing Barricades (1.2m tall = 120 units, Y=60)
+            // Row 1 (Z=2850)
+            Model {
+                position: Qt.vector3d(3550, 60, 2850)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(3850, 60, 2850)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(4150, 60, 2850)
+                source: "#Cube"
+                scale: Qt.vector3d(1.4, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+
+            // Row 2 (Z=3150)
+            Model {
+                position: Qt.vector3d(3450, 60, 3150)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(3750, 60, 3150)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(4050, 60, 3150)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+
+            // Row 3 (Z=3450)
+            Model {
+                position: Qt.vector3d(3550, 60, 3450)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(3850, 60, 3450)
+                source: "#Cube"
+                scale: Qt.vector3d(1.6, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(4150, 60, 3450)
+                source: "#Cube"
+                scale: Qt.vector3d(1.4, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+
+            // Laser-Caged Alcove holding Key 2 at (4150, 0, 2650)
+            Node {
+                id: laserCageGroup
+                visible: root.levelManager ? root.levelManager.laserCageActive : true
+                position: Qt.vector3d(4150, 0, 2650)
+
+                // 4 Corner Laser Posts
+                Model {
+                    position: Qt.vector3d(-40, 100, -40)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.12, 2.0, 0.12)
+                    materials: [ PrincipledMaterial { baseColor: "#ff0033"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                Model {
+                    position: Qt.vector3d(40, 100, -40)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.12, 2.0, 0.12)
+                    materials: [ PrincipledMaterial { baseColor: "#ff0033"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                Model {
+                    position: Qt.vector3d(-40, 100, 40)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.12, 2.0, 0.12)
+                    materials: [ PrincipledMaterial { baseColor: "#ff0033"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                Model {
+                    position: Qt.vector3d(40, 100, 40)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.12, 2.0, 0.12)
+                    materials: [ PrincipledMaterial { baseColor: "#ff0033"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                // Laser containment plane
+                Model {
+                    position: Qt.vector3d(0, 100, 0)
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.8, 2.0, 0.8)
+                    materials: [ PrincipledMaterial {
+                        baseColor: "#ff0033"
+                        opacity: 0.35
+                        lighting: PrincipledMaterial.NoLighting
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 100, 0)
+                    color: "#ff0033"
+                    brightness: 6.0
+                }
+            }
+
+            // 3 Shootable Glowing Power Targets hanging from Rafters (Y=380..420)
+            Repeater3D {
+                model: (root.levelManager && root.levelManager.powerRelays) ? root.levelManager.powerRelays : []
+                delegate: Node {
+                    visible: !modelData.destroyed
+                    position: Qt.vector3d(modelData.x, modelData.y, modelData.z)
+
+                    // Vertical mounting suspension rod from rafter down to target
+                    Model {
+                        position: Qt.vector3d(0, 100, 0)
+                        source: "#Cylinder"
+                        scale: Qt.vector3d(0.06, 2.0, 0.06)
+                        materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
+                    }
+
+                    // Target outer cyan bullseye ring
+                    Model {
+                        source: "#Cylinder"
+                        scale: Qt.vector3d(1.1, 0.12, 1.1)
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#00e5ff"
+                            lighting: PrincipledMaterial.NoLighting
+                        } ]
+                    }
+
+                    // Target inner amber concentric ring (perpendicular cross-disc for 360-degree visibility)
+                    Model {
+                        source: "#Cylinder"
+                        eulerRotation: Qt.vector3d(90, 0, 0)
+                        scale: Qt.vector3d(0.9, 0.1, 0.9)
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#f39c12"
+                            lighting: PrincipledMaterial.NoLighting
+                        } ]
+                    }
+
+                    // Glowing Ruby Bullseye Core
+                    Model {
+                        source: "#Sphere"
+                        scale: Qt.vector3d(0.55, 0.55, 0.55)
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#ff0055"
+                            lighting: PrincipledMaterial.NoLighting
+                        } ]
+                    }
+
+                    // Target Beacon Light
+                    PointLight {
+                        position: Qt.vector3d(0, 0, 0)
+                        color: "#ff0055"
+                        brightness: 8.0
+                    }
+                }
+            }
+
+            // Wall Monitor displaying Security Digit K2
+            Node {
+                position: Qt.vector3d(4285, 150, 3050)
+                eulerRotation.y: -90
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.4, 0.9, 0.1)
+                    materials: [ PrincipledMaterial { baseColor: "#0d1117"; roughness: 0.5 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 0, 6)
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.2, 0.7, 0.05)
+                    materials: [ DefaultMaterial {
+                        diffuseMap: Texture {
+                            sourceItem: Rectangle {
+                                width: 256; height: 160
+                                color: "#050d1a"
+                                border.color: "#00e5ff"
+                                border.width: 4
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "SECTOR K2"
+                                        color: "#7f8c8d"
+                                        font.pixelSize: 22
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "ACCESS KEY 2"
+                                        color: "#00e5ff"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 0, 15)
+                    color: "#00e5ff"
+                    brightness: 3.0
+                }
+            }
+        }
+
+        // ==================== 4. KEY 3: SENTINEL PATROL (NORTHWEST) ====================
+        Node {
+            id: sentinelPatrolGroup
+
+            // Raised Keycard Pedestal holding Key 3 at (950, 0, 1150)
+            Model {
+                position: Qt.vector3d(950, 15, 1150)
                 source: "#Cylinder"
-                scale: Qt.vector3d(0.25, 0.2, 0.25)
+                scale: Qt.vector3d(1.0, 0.3, 1.0)
+                materials: [ PrincipledMaterial { baseColor: "#1c2833"; roughness: 0.5; metalness: 0.8 } ]
+            }
+            PointLight {
+                position: Qt.vector3d(950, 120, 1150)
+                color: "#f1c40f"
+                brightness: 5.0
+            }
+
+            // Wall Monitor displaying Security Digit K3
+            Node {
+                position: Qt.vector3d(515, 150, 1150)
+                eulerRotation.y: 90
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.4, 0.9, 0.1)
+                    materials: [ PrincipledMaterial { baseColor: "#0d1117"; roughness: 0.5 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 0, 6)
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.2, 0.7, 0.05)
+                    materials: [ DefaultMaterial {
+                        diffuseMap: Texture {
+                            sourceItem: Rectangle {
+                                width: 256; height: 160
+                                color: "#050d1a"
+                                border.color: "#00e5ff"
+                                border.width: 4
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "SECTOR K3"
+                                        color: "#7f8c8d"
+                                        font.pixelSize: 22
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "ACCESS KEY 3"
+                                        color: "#00e5ff"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 0, 15)
+                    color: "#00e5ff"
+                    brightness: 3.0
+                }
+            }
+        }
+
+        // ==================== 5. KEY 4: MIXED VAULT (NORTHEAST) ====================
+        Node {
+            id: mixedVaultGroup
+
+            // Elevated 2m Central Platform / Catwalk (Platform height: 200, Rows 10..12, Cols 37..39 -> X=3850, Z=1150)
+            Model {
+                position: Qt.vector3d(3850, 100, 1150)
+                source: "#Cube"
+                scale: Qt.vector3d(3.0, 2.0, 3.0)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.6 } ]
+            }
+            // Raised Keycard Pedestal on top of platform at Y=200
+            Model {
+                position: Qt.vector3d(3850, 208, 1150)
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.8, 0.16, 0.8)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.4; metalness: 0.8 } ]
+            }
+            // Step-up Access Crates (Row 14: 50cm, Row 13: 100cm -> leads to 200cm platform)
+            Model {
+                position: Qt.vector3d(3850, 25, 1450)
+                source: "#Cube"
+                scale: Qt.vector3d(1.0, 0.5, 1.0)
+                materials: [ PrincipledMaterial { baseColor: "#7f8c8d"; roughness: 0.7; metalness: 0.3 } ]
+            }
+            Model {
+                position: Qt.vector3d(3850, 50, 1350)
+                source: "#Cube"
+                scale: Qt.vector3d(1.0, 1.0, 1.0)
+                materials: [ PrincipledMaterial { baseColor: "#7f8c8d"; roughness: 0.7; metalness: 0.3 } ]
+            }
+            // L-shaped cover barriers around platform
+            Model {
+                position: Qt.vector3d(3650, 260, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(0.3, 1.2, 1.5)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(4050, 260, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(0.3, 1.2, 1.5)
+                materials: [ PrincipledMaterial { baseColor: "#34495e"; roughness: 0.6 } ]
+            }
+            // Magenta Spotlight illuminating Key 4
+            PointLight {
+                position: Qt.vector3d(3850, 280, 1150)
+                color: "#e056fd"
+                brightness: 6.0
+            }
+
+            // Wall Monitor displaying Security Digit K4
+            Node {
+                position: Qt.vector3d(3850, 150, 615)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.4, 0.9, 0.1)
+                    materials: [ PrincipledMaterial { baseColor: "#0d1117"; roughness: 0.5 } ]
+                }
+                Model {
+                    position: Qt.vector3d(0, 0, 6)
+                    source: "#Cube"
+                    scale: Qt.vector3d(1.2, 0.7, 0.05)
+                    materials: [ DefaultMaterial {
+                        diffuseMap: Texture {
+                            sourceItem: Rectangle {
+                                width: 256; height: 160
+                                color: "#050d1a"
+                                border.color: "#00e5ff"
+                                border.width: 4
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "SECTOR K4"
+                                        color: "#7f8c8d"
+                                        font.pixelSize: 22
+                                        font.bold: true
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "ACCESS KEY 4"
+                                        color: "#00e5ff"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    } ]
+                }
+                PointLight {
+                    position: Qt.vector3d(0, 0, 15)
+                    color: "#00e5ff"
+                    brightness: 3.0
+                }
+            }
+        }
+
+        // ==================== 6. STORAGE ROOM AMBUSH (NORTH) ====================
+        Node {
+            id: storageAmbushGroup
+
+            // Tall Cargo Containers in warehouse
+            Model {
+                position: Qt.vector3d(1950, 150, 850)
+                source: "#Cube"
+                scale: Qt.vector3d(1.8, 3.0, 1.2)
+                materials: [ PrincipledMaterial { baseColor: "#c0392b"; roughness: 0.5 } ]
+            }
+            Model {
+                position: Qt.vector3d(2750, 150, 850)
+                source: "#Cube"
+                scale: Qt.vector3d(1.8, 3.0, 1.2)
+                materials: [ PrincipledMaterial { baseColor: "#2980b9"; roughness: 0.5 } ]
+            }
+            Model {
+                position: Qt.vector3d(2150, 100, 1150)
+                source: "#Cube"
+                scale: Qt.vector3d(1.2, 2.0, 1.2)
+                materials: [ PrincipledMaterial { baseColor: "#d35400"; roughness: 0.6 } ]
+            }
+            Model {
+                position: Qt.vector3d(2550, 100, 1150)
+                source: "#Cube"
+                scale: Qt.vector3d(1.2, 2.0, 1.2)
+                materials: [ PrincipledMaterial { baseColor: "#27ae60"; roughness: 0.6 } ]
+            }
+            // Staggered crate stacks (1m -> 2m)
+            Model {
+                position: Qt.vector3d(1950, 50, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(1.0, 1.0, 1.0)
+                materials: [ PrincipledMaterial { baseColor: "#7f8c8d"; roughness: 0.7 } ]
+            }
+            Model {
+                position: Qt.vector3d(2750, 50, 1050)
+                source: "#Cube"
+                scale: Qt.vector3d(1.0, 1.0, 1.0)
+                materials: [ PrincipledMaterial { baseColor: "#7f8c8d"; roughness: 0.7 } ]
+            }
+        }
+
+        // ==================== 7. EXIT ELEVATOR BULKHEAD & KEYPAD TERMINAL ====================
+        Node {
+            id: exitElevatorGroup
+            position: Qt.vector3d(2350, 0, 250)
+
+            // Elevator Bulkhead Frame
+            Model {
+                position: Qt.vector3d(0, 150, 0)
+                source: "#Cube"
+                scale: Qt.vector3d(4.0, 3.0, 0.3)
+                materials: [ PrincipledMaterial { baseColor: "#111722"; roughness: 0.4; metalness: 0.8 } ]
+            }
+            // Status Light: Red when locked, Green when all 4 keys held
+            PointLight {
+                position: Qt.vector3d(0, 280, 20)
+                color: (root.levelManager && root.levelManager.collectedKeysCount >= 4) ? "#2ecc71" : "#e74c3c"
+                brightness: 6.0
+            }
+
+            // Keycard Terminal Pedestal at door entrance
+            Model {
+                position: Qt.vector3d(130, 60, 270)
+                source: "#Cube"
+                scale: Qt.vector3d(0.4, 1.2, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.7 } ]
+            }
+            Model {
+                position: Qt.vector3d(130, 125, 270)
+                eulerRotation.x: -25
+                source: "#Cube"
+                scale: Qt.vector3d(0.35, 0.25, 0.08)
                 materials: [ PrincipledMaterial {
-                    baseColor: (root.levelManager && root.levelManager.gasLeakRepairStage >= 3) ? "#2ecc71" : "#f1c40f"
+                    baseColor: (root.levelManager && root.levelManager.collectedKeysCount >= 4) ? "#2ecc71" : "#00e5ff"
                     lighting: PrincipledMaterial.NoLighting
                 } ]
             }
             PointLight {
-                position: Qt.vector3d(0, 140, 0)
-                color: (root.levelManager && root.levelManager.gasLeakRepairStage >= 3) ? "#2ecc71" : "#e74c3c"
-                brightness: 8.5
+                position: Qt.vector3d(130, 140, 280)
+                color: (root.levelManager && root.levelManager.collectedKeysCount >= 4) ? "#2ecc71" : "#00e5ff"
+                brightness: 3.0
             }
         }
+
     }
 }

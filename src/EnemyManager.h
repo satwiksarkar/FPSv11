@@ -57,6 +57,7 @@ public:
     // Lifecycle
     Q_INVOKABLE void setWorld(GameWorld *world);
     Q_INVOKABLE bool spawnDrone(const QVector3D &position);
+    Q_INVOKABLE bool spawnDrone(const QVector3D &position, bool canShoot);
     Q_INVOKABLE bool spawnSentinel(const QVector3D &position);
     Q_INVOKABLE void updateAll(float deltaTime, const QVector3D &playerPos,
                                 Player *player, GameManager *gameManager);

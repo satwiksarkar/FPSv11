@@ -13,12 +13,15 @@ namespace GameConfig {
     // === Player Movement & Kinematics ===
     constexpr float PLAYER_WALK_SPEED = 300.0f;       // Units per second
     constexpr float PLAYER_CROUCH_SPEED = 140.0f;     // Slower speed while crouching
+    constexpr float PLAYER_CRAWL_SPEED = 85.0f;       // Slow speed while crawling under low hazards
     constexpr float PLAYER_SPRINT_SPEED = 450.0f;     // Fast sprint speed (1.5x walk speed)
     constexpr float PLAYER_JUMP_VELOCITY = 380.0f;    // Upward launch velocity
     constexpr float GRAVITY = 980.0f;                 // Downward gravity acceleration
     constexpr float EYE_HEIGHT_STAND = 160.0f;        // Camera Y offset when standing
     constexpr float EYE_HEIGHT_CROUCH = 90.0f;        // Camera Y offset when crouching
-    constexpr float CROUCH_TRANSITION_SPEED = 10.0f;  // Lerp speed for smooth crouching
+    constexpr float EYE_HEIGHT_CRAWL = 45.0f;         // Camera Y offset when crawling
+    constexpr float CRAWL_COLLISION_RADIUS = 26.0f;   // Shrunk horizontal collision boundary while crawling
+    constexpr float CROUCH_TRANSITION_SPEED = 10.0f;  // Lerp speed for smooth crouching/crawling
     constexpr float MOUSE_SENSITIVITY = 0.15f;        // Mouse look sensitivity
     constexpr float PITCH_LIMIT_MIN = -80.0f;         // Downward look limit (degrees)
     constexpr float PITCH_LIMIT_MAX = 80.0f;          // Upward look limit (degrees)

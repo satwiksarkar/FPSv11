@@ -156,8 +156,8 @@ Node {
                 scale: Qt.vector3d(0.42, 0.16, 0.52)
                 position: Qt.vector3d(0, 14, -2)
                 materials: [ PrincipledMaterial {
-                    // Shooter: Tactical Cyan; Melee: Aggressive Crimson / Flash red on attack
-                    baseColor: droneNode.isShooter ? "#0284c7" : (droneNode.isAttacking ? "#ff3333" : "#dc2626")
+                    // Shock Drone: Electric Cyan/Blue; Ranged Drone: Crimson Red
+                    baseColor: !droneNode.isShooter ? "#0284c7" : (droneNode.isAttacking ? "#ff3333" : "#dc2626")
                     metalness: 0.6
                     roughness: 0.4
                 }]
@@ -169,7 +169,7 @@ Node {
                 scale: Qt.vector3d(0.36, 0.12, 0.1)
                 position: Qt.vector3d(0, 2, 33)
                 materials: [ PrincipledMaterial {
-                    baseColor: droneNode.isShooter ? "#00f0ff" : "#ff1122"
+                    baseColor: !droneNode.isShooter ? "#00f0ff" : "#ff1122"
                     lighting: PrincipledMaterial.NoLighting
                 }]
             }
@@ -180,7 +180,7 @@ Node {
                 scale: Qt.vector3d(0.28, 0.14, 0.08)
                 position: Qt.vector3d(0, 2, -33)
                 materials: [ PrincipledMaterial {
-                    baseColor: droneNode.isShooter ? "#38bdf8" : "#f59e0b"
+                    baseColor: !droneNode.isShooter ? "#38bdf8" : "#f59e0b"
                     lighting: PrincipledMaterial.NoLighting
                 }]
             }
@@ -202,7 +202,7 @@ Node {
                 scale: Qt.vector3d(0.16, 0.25, 0.16)
                 position: Qt.vector3d(0, -28, 0)
                 materials: [ PrincipledMaterial {
-                    baseColor: droneNode.isShooter ? "#00e5ff" : "#ff7700"
+                    baseColor: !droneNode.isShooter ? "#00e5ff" : "#ff4400"
                     lighting: PrincipledMaterial.NoLighting
                 }]
             }

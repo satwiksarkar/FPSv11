@@ -57,8 +57,8 @@ class LevelData
 {
 public:
     static constexpr int LEVEL1_V1_SIZE = 48;
-    static constexpr int LEVEL1_V2_SIZE = 80;
-    static constexpr int LEVEL1_SIZE = 80;
+    static constexpr int LEVEL1_V2_SIZE = 48;
+    static constexpr int LEVEL1_SIZE = 48;
     static constexpr int LEVEL2_SIZE = 64;
     static constexpr int LEVEL3_SIZE = 40;
     static constexpr int TEST_MAP_SIZE = 16;
@@ -74,12 +74,18 @@ public:
     static QVector3D getExitCenterPosition(int level, int variant = 1);
     static int getExitTileCode(int level);
 
+    // Multi-height support for verticality (catwalks, staggered crates, low crawl ceilings)
+    static float getFloorHeight(int level, int row, int col);
+    static float getCeilingHeight(int level, int row, int col);
+
     // BFS reachability verification from spawn to exit / boss vents
     static bool checkReachability(int level, QString &outLog, int variant = 1);
 
-    // Level 1 entity spawns
+    // Level 1 entity spawns & dynamic pools
     static QList<QVector3D> getLevel1CorridorDroneSpawns(int variant = 1);
     static QList<QVector3D> getLevel1LoadingBayDroneSpawns(int variant = 1);
+    static QList<QVector3D> getLevel1DynamicSpawnAnchors();
+    static QList<QVector3D> getLevel1StorageAmbushAnchors();
     static QList<PickupItemDef> getLevel1Pickups(int variant = 1);
 
     // Level 2 entity spawns & cache

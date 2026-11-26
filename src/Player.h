@@ -32,6 +32,7 @@ class Player : public QObject
     Q_PROPERTY(int maxHealth READ maxHealth CONSTANT)
     Q_PROPERTY(bool isDead READ isDead NOTIFY healthChanged)
     Q_PROPERTY(bool isCrouching READ isCrouching NOTIFY crouchChanged)
+    Q_PROPERTY(bool isCrawling READ isCrawling NOTIFY crawlChanged)
     Q_PROPERTY(bool isSprinting READ isSprinting NOTIFY sprintChanged)
     Q_PROPERTY(bool isGrounded READ isGrounded NOTIFY groundedChanged)
     Q_PROPERTY(bool isMoving READ isMoving NOTIFY movingChanged)
@@ -68,6 +69,7 @@ public:
     int maxHealth() const;
     bool isDead() const;
     bool isCrouching() const;
+    bool isCrawling() const;
     bool isSprinting() const;
     bool isGrounded() const;
     bool isMoving() const;
@@ -82,6 +84,8 @@ public:
     Q_INVOKABLE void handleMouseMove(float deltaX, float deltaY);
     Q_INVOKABLE void jump();
     Q_INVOKABLE void setCrouch(bool crouch);
+    Q_INVOKABLE void setCrawl(bool crawl);
+    Q_INVOKABLE void toggleCrawl();
     Q_INVOKABLE void setSprint(bool sprint);
     Q_INVOKABLE void setRotation(float yaw, float pitch);
 
@@ -106,6 +110,7 @@ signals:
     void cameraRotationChanged(const QVector3D &newCamRot);
     void healthChanged(int newHealth);
     void crouchChanged(bool isCrouching);
+    void crawlChanged(bool isCrawling);
     void sprintChanged(bool isSprinting);
     void groundedChanged(bool isGrounded);
     void movingChanged(bool isMoving);
@@ -135,9 +140,10 @@ private:
     float m_yaw;    // Horizontal rotation (degrees)
     float m_pitch;  // Vertical look tilt (degrees)
 
-    // Crouch & Eye Height
+    // Crouch, Crawl & Eye Height
     float m_currentEyeHeight;
     bool m_isCrouching;
+    bool m_isCrawling;
     bool m_isSprinting;
 
     // Movement input states

@@ -72,6 +72,24 @@ class LevelManager : public QObject
     Q_PROPERTY(QString gasLeakRoomName READ gasLeakRoomName NOTIFY gasEmergencyChanged)
     Q_PROPERTY(QVector3D gasStationPosition READ gasStationPosition NOTIFY gasEmergencyChanged)
 
+    // Level 1: Shootable Power Relays & Laser Cage (Key 2: Shooting Gallery)
+    Q_PROPERTY(bool laserCageActive READ isLaserCageActive NOTIFY laserCageChanged)
+    Q_PROPERTY(int relaysRemaining READ relaysRemaining NOTIFY relaysChanged)
+    Q_PROPERTY(QVariantList powerRelays READ powerRelays NOTIFY relaysChanged)
+
+    // Level 1: 4-Digit Environmental Code (Exit Elevator)
+    Q_PROPERTY(int k1Digit READ k1Digit CONSTANT)
+    Q_PROPERTY(int k2Digit READ k2Digit CONSTANT)
+    Q_PROPERTY(int k3Digit READ k3Digit CONSTANT)
+    Q_PROPERTY(int k4Digit READ k4Digit CONSTANT)
+    Q_PROPERTY(QString overrideCode READ overrideCode CONSTANT)
+    Q_PROPERTY(bool overrideCodeSolved READ isOverrideCodeSolved NOTIFY overrideCodeSolvedChanged)
+    Q_PROPERTY(bool keypadVisible READ isKeypadVisible WRITE setKeypadVisible NOTIFY keypadVisibleChanged)
+
+    // Level 1: Sprint-Triggered Sensors & Storage Ambush
+    Q_PROPERTY(QVariantList sprintSensors READ sprintSensors NOTIFY sprintSensorsChanged)
+    Q_PROPERTY(bool storageAmbushTriggered READ isStorageAmbushTriggered NOTIFY storageAmbushTriggeredChanged)
+
 public:
     explicit LevelManager(QObject *parent = nullptr);
 
@@ -130,6 +148,39 @@ public:
     Q_INVOKABLE void loadLevel(int levelIndex, bool resetLevelKeys = true);
     Q_INVOKABLE void advanceLevel();
     Q_INVOKABLE void resetToFirstLevel();
+
+    // Level 1: Multi-height queries
+    Q_INVOKABLE float getFloorHeight(int row, int col) const;
+    Q_INVOKABLE float getCeilingHeight(int row, int col) const;
+    Q_INVOKABLE float getFloorHeightAtWorldPos(float x, float z) const;
+    Q_INVOKABLE float getCeilingHeightAtWorldPos(float x, float z) const;
+
+    // Level 1: Shootable Power Relays & Laser Cage (Key 2: Shooting Gallery)
+    bool isLaserCageActive() const;
+    int relaysRemaining() const;
+    QVariantList powerRelays() const;
+    int checkRayHitRelays(const QVector3D &origin, const QVector3D &dir, float &outHitDist);
+    Q_INVOKABLE bool destroyRelay(int index);
+
+    // Level 1: 4-Digit Environmental Code & Keypad Overlay (Exit Elevator)
+    int k1Digit() const;
+    int k2Digit() const;
+    int k3Digit() const;
+    int k4Digit() const;
+    QString overrideCode() const;
+    bool isOverrideCodeSolved() const;
+    bool isKeypadVisible() const;
+    void setKeypadVisible(bool visible);
+    Q_INVOKABLE bool submitOverrideCode(const QString &code);
+    Q_INVOKABLE void openExitKeypad();
+    Q_INVOKABLE void closeExitKeypad();
+
+    // Level 1: Sprint-Triggered Corridor Sensors & Storage Ambush
+    QVariantList sprintSensors() const;
+    bool isStorageAmbushTriggered() const;
+    Q_INVOKABLE void updateSensors(float deltaTime, const QVector3D &playerPos, bool isSprinting, EnemyManager *enemyMgr = nullptr);
+    Q_INVOKABLE void checkStorageAmbush(const QVector3D &playerPos, EnemyManager *enemyMgr = nullptr);
+    Q_INVOKABLE void spawnLevel1DynamicEnemies(EnemyManager *enemyManager);
 
     // Mission key progression API (Day 2 - authoritative 4-bit mask per level)
     Q_INVOKABLE bool hasKey(int keyIndex, int level = -1) const;
@@ -239,6 +290,16 @@ signals:
     void gasEmergencyResolved();
     void gasEmergencyFatal();
 
+    // Level 1 signals
+    void laserCageChanged();
+    void relaysChanged();
+    void overrideCodeSolvedChanged();
+    void keypadVisibleChanged();
+    void sprintSensorsChanged();
+    void sensorTripped(int sensorIndex, const QVector3D &pos);
+    void storageAmbushTriggeredChanged();
+    void storageAmbushTriggered();
+
 private:
     void rebuildDoorsForLevel(int level);
     void rebuildKeysForLevel(int level);
@@ -289,6 +350,34 @@ private:
     QMetaObject::Connection m_bossConn;
     bool m_bossCompleted;
     int m_activeVentsRemaining;
+
+    // Level 1: Power Relays & Laser Cage
+    struct RelayTarget {
+        QVector3D position;
+        bool destroyed = false;
+        float radius = 60.0f;
+    };
+    QList<RelayTarget> m_powerRelays;
+    bool m_laserCageActive;
+
+    // Level 1: 4-Digit Environmental Code
+    int m_k1Digit;
+    int m_k2Digit;
+    int m_k3Digit;
+    int m_k4Digit;
+    QString m_overrideCode;
+    bool m_overrideCodeSolved;
+    bool m_keypadVisible;
+
+    // Level 1: Sprint Sensors & Storage Ambush
+    struct SensorItem {
+        QVector3D position;
+        float z = 0.0f;
+        float cooldown = 0.0f;
+        bool tripped = false;
+    };
+    QList<SensorItem> m_sprintSensors;
+    bool m_storageAmbushTriggered;
 };
 
 #endif // LEVELMANAGER_H

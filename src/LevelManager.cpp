@@ -107,22 +107,47 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
         m_level1Variant = (m_playerCount >= 3) ? 2 : 1;
         emit level1VariantChanged(m_level1Variant);
 
+        float bs = GameConfig::BLOCK_SIZE;
+
+        // Level 1: Gas Leak completely removed
         m_levelTime = 0.0f;
         m_gasLeakActive = false;
-        m_gasLeakResolved = false;
-        m_gasLeakTimeRemaining = 30.0f;
-        m_gasLeakRepairStage = 0;
-        // Strict safety window: 120s + rand(15s..50s)
-        m_gasLeakTriggerTime = 120.0f + static_cast<float>(QRandomGenerator::global()->bounded(15, 50));
-        float bs = GameConfig::BLOCK_SIZE;
-        if (m_level1Variant == 2) {
-            m_gasStationPos = QVector3D((62.0f + 0.5f) * bs, 0.0f, (66.0f + 0.5f) * bs);
-            m_gasLeakRoomName = QStringLiteral("MAINTENANCE WORKSHOP");
-        } else {
-            m_gasStationPos = QVector3D((38.0f + 0.5f) * bs, 0.0f, (31.0f + 0.5f) * bs);
-            m_gasLeakRoomName = QStringLiteral("GAS CONTROL ROOM");
-        }
+        m_gasLeakResolved = true;
+        m_gasLeakTimeRemaining = 9999.0f;
+        m_gasLeakRepairStage = 3;
+        m_gasLeakTriggerTime = 1e9f;
         emit gasEmergencyChanged();
+
+        // Level 1: Shootable Power Relays & Laser Cage (Key 2: Shooting Gallery)
+        m_powerRelays.clear();
+        m_powerRelays.append({ QVector3D(3650.0f, 380.0f, 2750.0f), false, 65.0f });
+        m_powerRelays.append({ QVector3D(4050.0f, 420.0f, 3050.0f), false, 65.0f });
+        m_powerRelays.append({ QVector3D(3750.0f, 390.0f, 3350.0f), false, 65.0f });
+        m_laserCageActive = true;
+        emit laserCageChanged();
+        emit relaysChanged();
+
+        // Level 1: 4-Digit Environmental Code (Exit Elevator)
+        m_k1Digit = QRandomGenerator::global()->bounded(10);
+        m_k2Digit = QRandomGenerator::global()->bounded(10);
+        m_k3Digit = QRandomGenerator::global()->bounded(10);
+        m_k4Digit = QRandomGenerator::global()->bounded(10);
+        m_overrideCode = QString("%1%2%3%4").arg(m_k1Digit).arg(m_k2Digit).arg(m_k3Digit).arg(m_k4Digit);
+        m_overrideCodeSolved = false;
+        m_keypadVisible = false;
+        emit overrideCodeSolvedChanged();
+        emit keypadVisibleChanged();
+
+        // Level 1: Sprint-Triggered Corridor Sensors along Central Spine
+        m_sprintSensors.clear();
+        m_sprintSensors.append({ QVector3D(23.5f * bs, 10.0f, 36.5f * bs), 36.5f * bs, 0.0f, false });
+        m_sprintSensors.append({ QVector3D(23.5f * bs, 10.0f, 25.5f * bs), 25.5f * bs, 0.0f, false });
+        m_sprintSensors.append({ QVector3D(23.5f * bs, 10.0f, 15.5f * bs), 15.5f * bs, 0.0f, false });
+        emit sprintSensorsChanged();
+
+        // Level 1: Storage Room Ambush
+        m_storageAmbushTriggered = false;
+        emit storageAmbushTriggeredChanged();
 
         if (m_puzzleManager) {
             m_puzzleManager->setLevel1Variant(m_level1Variant);
@@ -938,6 +963,15 @@ bool LevelManager::evaluateDoorAccess(const Door *door, QString &outDenyReason) 
         const int reqKeys = (door->requiredKeyCount() > 0) ? door->requiredKeyCount() : totalKeysRequired();
         const int reqMask = door->requiredKeyMask();
         const bool keysSatisfied = (count >= reqKeys) && (reqMask == 0 || (mask & reqMask) == reqMask);
+
+        if (m_currentLevel == 1) {
+            if (!keysSatisfied) {
+                outDenyReason = QStringLiteral("[LOCKED] 4 ACCESS KEYS REQUIRED (%1/4)").arg(count);
+                return false;
+            }
+            return true;
+        }
+
         const bool bossRequired = door->requiresBossDefeated() || (m_currentLevel == 3);
         const bool bossSatisfied = !bossRequired || (m_bossCompleted && m_activeVentsRemaining == 0);
 
@@ -1138,9 +1172,6 @@ int LevelManager::collectedKeysCount() const
 
 int LevelManager::totalKeysRequired() const
 {
-    if (m_currentLevel == 1) {
-        return (m_level1Variant == 2) ? 4 : 2;
-    }
     return 4;
 }
 
@@ -1368,7 +1399,8 @@ AccessKeyPickup* LevelManager::addKey(int row, int col, int keyIndex, const QStr
     }
 
     const float bs = GameConfig::BLOCK_SIZE;
-    QVector3D pos((col + 0.5f) * bs, 35.0f, (row + 0.5f) * bs);
+    float floorHeight = LevelData::getFloorHeight(m_currentLevel, row, col);
+    QVector3D pos((col + 0.5f) * bs, floorHeight + 35.0f, (row + 0.5f) * bs);
 
     AccessKeyPickup *pickup = new AccessKeyPickup(this);
     pickup->configure(m_currentLevel, keyIndex, pos, name);
@@ -1420,14 +1452,10 @@ void LevelManager::updateKeys(float deltaTime, const QVector3D &playerPos, bool 
             continue;
         }
         pickup->update(deltaTime);
-        if (m_currentLevel == 1 && m_puzzleManager) {
-            // Guard key collection on Level 1 until corresponding puzzle is solved
-            if (m_level1Variant == 1) {
-                if (pickup->keyIndex() == 0 && !m_puzzleManager->isPowerSolved()) continue;
-                if (pickup->keyIndex() == 1 && !m_puzzleManager->isSecuritySolved()) continue;
-            } else {
-                if ((pickup->keyIndex() == 0 || pickup->keyIndex() == 1) && !m_puzzleManager->isPowerSolved()) continue;
-                if ((pickup->keyIndex() == 2 || pickup->keyIndex() == 3) && !m_puzzleManager->isSecuritySolved()) continue;
+        if (m_currentLevel == 1) {
+            // Key 1 (Shooting Gallery) is locked inside laser cage until all 3 power relays are destroyed
+            if (pickup->keyIndex() == 1 && m_laserCageActive) {
+                continue;
             }
         }
         if (playerAlive && pickup->isPlayerInRange(playerPos, playerAlive)) {
@@ -1490,7 +1518,7 @@ QVector3D LevelManager::gasStationPosition() const
 
 void LevelManager::triggerGasLeakEmergency()
 {
-    if (m_currentLevel != 1 || m_gasLeakActive) return;
+    if (m_currentLevel == 1 || m_gasLeakActive) return;
     m_gasLeakActive = true;
     m_gasLeakTimeRemaining = 30.0f;
     m_gasLeakRepairStage = 0;
@@ -1512,7 +1540,7 @@ void LevelManager::purgeGasEmergency()
 
 void LevelManager::interactGasStation(const QVector3D &playerPos)
 {
-    if (m_currentLevel != 1 || !m_gasLeakActive) return;
+    if (m_currentLevel == 1 || !m_gasLeakActive) return;
     float dist = (playerPos - m_gasStationPos).length();
     if (dist > 250.0f) return;
 
@@ -1527,7 +1555,7 @@ void LevelManager::interactGasStation(const QVector3D &playerPos)
 
 void LevelManager::updateGasEmergency(float deltaTime, Player *player)
 {
-    if (m_currentLevel != 1 || deltaTime <= 0.0f) return;
+    if (m_currentLevel == 1 || deltaTime <= 0.0f) return;
 
     if (!m_gasLeakActive && !m_gasLeakResolved) {
         m_levelTime += deltaTime;
@@ -1548,4 +1576,283 @@ void LevelManager::updateGasEmergency(float deltaTime, Player *player)
             emit gasEmergencyChanged();
         }
     }
+}
+
+// ==================== LEVEL 1: MULTI-HEIGHT QUERIES ====================
+
+float LevelManager::getFloorHeight(int row, int col) const
+{
+    return LevelData::getFloorHeight(m_currentLevel, row, col);
+}
+
+float LevelManager::getCeilingHeight(int row, int col) const
+{
+    return LevelData::getCeilingHeight(m_currentLevel, row, col);
+}
+
+float LevelManager::getFloorHeightAtWorldPos(float x, float z) const
+{
+    int col = qFloor(x / GameConfig::BLOCK_SIZE);
+    int row = qFloor(z / GameConfig::BLOCK_SIZE);
+    return getFloorHeight(row, col);
+}
+
+float LevelManager::getCeilingHeightAtWorldPos(float x, float z) const
+{
+    int col = qFloor(x / GameConfig::BLOCK_SIZE);
+    int row = qFloor(z / GameConfig::BLOCK_SIZE);
+    return getCeilingHeight(row, col);
+}
+
+// ==================== LEVEL 1: SHOOTABLE POWER RELAYS & LASER CAGE ====================
+
+bool LevelManager::isLaserCageActive() const
+{
+    return m_laserCageActive;
+}
+
+int LevelManager::relaysRemaining() const
+{
+    int count = 0;
+    for (const auto &r : m_powerRelays) {
+        if (!r.destroyed) count++;
+    }
+    return count;
+}
+
+QVariantList LevelManager::powerRelays() const
+{
+    QVariantList list;
+    for (int i = 0; i < m_powerRelays.size(); ++i) {
+        QVariantMap m;
+        m[QStringLiteral("x")] = m_powerRelays[i].position.x();
+        m[QStringLiteral("y")] = m_powerRelays[i].position.y();
+        m[QStringLiteral("z")] = m_powerRelays[i].position.z();
+        m[QStringLiteral("destroyed")] = m_powerRelays[i].destroyed;
+        m[QStringLiteral("index")] = i;
+        list.append(m);
+    }
+    return list;
+}
+
+int LevelManager::checkRayHitRelays(const QVector3D &origin, const QVector3D &dir, float &outHitDist)
+{
+    if (m_currentLevel != 1) return -1;
+    outHitDist = 1e9f;
+    int hitIdx = -1;
+
+    for (int i = 0; i < m_powerRelays.size(); ++i) {
+        if (m_powerRelays[i].destroyed) continue;
+
+        // Ray to sphere intersection test
+        QVector3D oc = origin - m_powerRelays[i].position;
+        float b = QVector3D::dotProduct(oc, dir);
+        float c = QVector3D::dotProduct(oc, oc) - (m_powerRelays[i].radius * m_powerRelays[i].radius);
+        float discriminant = b * b - c;
+        if (discriminant >= 0.0f) {
+            float dist = -b - qSqrt(discriminant);
+            if (dist > 0.0f && dist < outHitDist) {
+                outHitDist = dist;
+                hitIdx = i;
+            }
+        }
+    }
+    return hitIdx;
+}
+
+bool LevelManager::destroyRelay(int index)
+{
+    if (index < 0 || index >= m_powerRelays.size() || m_powerRelays[index].destroyed) return false;
+    m_powerRelays[index].destroyed = true;
+    emit relaysChanged();
+
+    int remaining = relaysRemaining();
+    qDebug() << "[LevelManager] Power Relay" << (index + 1) << "DESTROYED! Remaining:" << remaining;
+
+    if (remaining == 0 && m_laserCageActive) {
+        m_laserCageActive = false;
+        emit laserCageChanged();
+        emit doorInteractionFeedback(QStringLiteral("ALL POWER RELAYS DESTROYED! LASER CAGE DISABLED."), QStringLiteral("#00f0ff"));
+        qDebug() << "[LevelManager] All 3 relays destroyed. Laser cage deactivated!";
+    } else {
+        emit doorInteractionFeedback(QStringLiteral("POWER RELAY DESTROYED (%1/3 REMAINING)").arg(remaining), QStringLiteral("#f1c40f"));
+    }
+    return true;
+}
+
+// ==================== LEVEL 1: 4-DIGIT ENVIRONMENTAL CODE ====================
+
+int LevelManager::k1Digit() const { return m_k1Digit; }
+int LevelManager::k2Digit() const { return m_k2Digit; }
+int LevelManager::k3Digit() const { return m_k3Digit; }
+int LevelManager::k4Digit() const { return m_k4Digit; }
+QString LevelManager::overrideCode() const { return m_overrideCode; }
+bool LevelManager::isOverrideCodeSolved() const { return m_overrideCodeSolved; }
+bool LevelManager::isKeypadVisible() const { return m_keypadVisible; }
+
+void LevelManager::setKeypadVisible(bool visible)
+{
+    if (m_keypadVisible != visible) {
+        m_keypadVisible = visible;
+        emit keypadVisibleChanged();
+    }
+}
+
+void LevelManager::openExitKeypad()
+{
+    setKeypadVisible(true);
+}
+
+void LevelManager::closeExitKeypad()
+{
+    setKeypadVisible(false);
+}
+
+bool LevelManager::submitOverrideCode(const QString &code)
+{
+    if (m_currentLevel != 1) return false;
+    if (code.trimmed() == m_overrideCode) {
+        m_overrideCodeSolved = true;
+        setKeypadVisible(false);
+        emit overrideCodeSolvedChanged();
+        emit doorInteractionFeedback(QStringLiteral("ACCESS GRANTED: EXIT ELEVATOR BULKHEAD UNLOCKED"), QStringLiteral("#2ecc71"));
+
+        // Unlock Exit Elevator door (door 0)
+        Door *exitDoor = doorAt(0);
+        if (exitDoor) {
+            exitDoor->open();
+        }
+        return true;
+    } else {
+        emit doorInteractionFeedback(QStringLiteral("INVALID OVERRIDE CODE — CHECK ROOM MONITORS"), QStringLiteral("#e74c3c"));
+        return false;
+    }
+}
+
+// ==================== LEVEL 1: SPRINT SENSORS & STORAGE AMBUSH ====================
+
+QVariantList LevelManager::sprintSensors() const
+{
+    QVariantList list;
+    for (int i = 0; i < m_sprintSensors.size(); ++i) {
+        QVariantMap m;
+        m[QStringLiteral("x")] = m_sprintSensors[i].position.x();
+        m[QStringLiteral("y")] = m_sprintSensors[i].position.y();
+        m[QStringLiteral("z")] = m_sprintSensors[i].position.z();
+        m[QStringLiteral("tripped")] = m_sprintSensors[i].tripped;
+        m[QStringLiteral("cooldown")] = m_sprintSensors[i].cooldown;
+        m[QStringLiteral("index")] = i;
+        list.append(m);
+    }
+    return list;
+}
+
+void LevelManager::updateSensors(float deltaTime, const QVector3D &playerPos, bool isSprinting, EnemyManager *enemyMgr)
+{
+    if (m_currentLevel != 1) return;
+
+    float bs = GameConfig::BLOCK_SIZE;
+    float minX = 22.0f * bs;
+    float maxX = 26.0f * bs;
+
+    bool stateChanged = false;
+    for (int i = 0; i < m_sprintSensors.size(); ++i) {
+        auto &sensor = m_sprintSensors[i];
+        if (sensor.cooldown > 0.0f) {
+            sensor.cooldown -= deltaTime;
+            if (sensor.cooldown <= 0.0f) {
+                sensor.cooldown = 0.0f;
+                sensor.tripped = false;
+                stateChanged = true;
+            }
+        }
+
+        // Tripped ONLY when entered while sprinting
+        if (isSprinting && sensor.cooldown <= 0.0f) {
+            if (playerPos.x() >= minX && playerPos.x() <= maxX) {
+                float dz = qAbs(playerPos.z() - sensor.z);
+                if (dz < 75.0f) {
+                    sensor.tripped = true;
+                    sensor.cooldown = 30.0f; // 30s cooldown
+                    stateChanged = true;
+                    emit sensorTripped(i, sensor.position);
+                    emit doorInteractionFeedback(QStringLiteral("MOTION SENSOR TRIPPED! SPRINT DETECTED!"), QStringLiteral("#e74c3c"));
+
+                    if (enemyMgr) {
+                        // Spawn 1 shock drone to investigate tripped sensor
+                        enemyMgr->spawnDrone(sensor.position + QVector3D(0.0f, 0.0f, -60.0f), false);
+                    }
+                }
+            }
+        }
+    }
+
+    if (stateChanged) {
+        emit sprintSensorsChanged();
+    }
+}
+
+bool LevelManager::isStorageAmbushTriggered() const
+{
+    return m_storageAmbushTriggered;
+}
+
+void LevelManager::checkStorageAmbush(const QVector3D &playerPos, EnemyManager *enemyMgr)
+{
+    if (m_currentLevel != 1 || m_storageAmbushTriggered) return;
+
+    float bs = GameConfig::BLOCK_SIZE;
+    // Storage Room bounding box: rows 6..13, cols 17..30
+    float minX = 17.0f * bs;
+    float maxX = 31.0f * bs;
+    float minZ = 6.0f * bs;
+    float maxZ = 14.0f * bs;
+
+    if (playerPos.x() >= minX && playerPos.x() <= maxX && playerPos.z() >= minZ && playerPos.z() <= maxZ) {
+        m_storageAmbushTriggered = true;
+        emit storageAmbushTriggeredChanged();
+        emit storageAmbushTriggered();
+        emit doorInteractionFeedback(QStringLiteral("STORAGE WAREHOUSE AMBUSH INITIATED!"), QStringLiteral("#e74c3c"));
+
+        if (enemyMgr) {
+            auto anchors = LevelData::getLevel1StorageAmbushAnchors();
+            if (!anchors.isEmpty()) {
+                // Balanced Storage Ambush: 1 Shock Drone, 1 Ranged Drone, 1 Sentinel
+                enemyMgr->spawnDrone(anchors[0] + QVector3D(-40.0f, 0, -30.0f), false);
+                enemyMgr->spawnDrone(anchors[1 % anchors.size()] + QVector3D(40.0f, 0, -30.0f), true);
+                enemyMgr->spawnSentinel(anchors[2 % anchors.size()]);
+            }
+        }
+    }
+}
+
+void LevelManager::spawnLevel1DynamicEnemies(EnemyManager *enemyManager)
+{
+    if (!enemyManager || m_currentLevel != 1) return;
+
+    auto anchors = LevelData::getLevel1DynamicSpawnAnchors();
+    if (anchors.isEmpty()) return;
+
+    // Roll random count 4 to 6 active enemies (reduced for balanced Level 1 difficulty)
+    int count = QRandomGenerator::global()->bounded(4, 7);
+
+    QList<int> indices;
+    for (int i = 0; i < anchors.size(); ++i) indices.append(i);
+    std::shuffle(indices.begin(), indices.end(), *QRandomGenerator::global());
+
+    for (int i = 0; i < count && i < indices.size(); ++i) {
+        QVector3D pos = anchors[indices[i]];
+        int roll = QRandomGenerator::global()->bounded(100);
+        if (roll < 60) {
+            // Blue Shock Drone (melee/flying, canShoot = false)
+            enemyManager->spawnDrone(pos, false);
+        } else if (roll < 90) {
+            // Red Ranged Drone (canShoot = true)
+            enemyManager->spawnDrone(pos, true);
+        } else {
+            // Red Sentinel (mech)
+            enemyManager->spawnSentinel(pos);
+        }
+    }
+    qDebug() << "[LevelManager] Level 1 dynamically spawned" << count << "enemies from 22 anchors.";
 }

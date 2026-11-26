@@ -5,6 +5,7 @@
 #include "EnemyManager.h"
 #include "BossArena.h"
 #include "CoolingVent.h"
+#include "LevelManager.h"
 #include <QtMath>
 #include <QDebug>
 
@@ -101,9 +102,16 @@ HeavyWeapon::HitType HeavyWeapon::shootAll(const QVector3D &origin, const QVecto
         hitVent = bossArena->checkRayHitVents(origin, normDir, ventDist);
     }
 
+    // 4. Raycast against Level 1 Shootable Power Relays via LevelManager
+    float relayDist = 99999.0f;
+    int hitRelayIndex = -1;
+    if (world && world->levelManager()) {
+        hitRelayIndex = world->levelManager()->checkRayHitRelays(origin, normDir, relayDist);
+    }
+
     // Determine closest target
     float closestDist = wallDist;
-    int closestType = hitWall ? 0 : -1; // 0 = Wall, 1 = Enemy, 2 = Vent
+    int closestType = hitWall ? 0 : -1; // 0 = Wall, 1 = Enemy, 2 = Vent, 3 = Relay
 
     if (hitEnemy && enemyDist < closestDist) {
         closestDist = enemyDist;
@@ -115,11 +123,26 @@ HeavyWeapon::HitType HeavyWeapon::shootAll(const QVector3D &origin, const QVecto
         closestType = 2;
     }
 
+    if (hitRelayIndex >= 0 && relayDist < closestDist) {
+        closestDist = relayDist;
+        closestType = 3;
+    }
+
     // Case 0: Wall or Pillar blocked shot
     if (closestType == 0) {
         emit targetHit(wallHitPos, HitType::Wall);
         emit shotFired(wallHitPos, HitType::Wall);
         return HitType::Wall;
+    }
+
+    // Case 3: Power Relay hit before obstacle
+    if (closestType == 3) {
+        world->levelManager()->destroyRelay(hitRelayIndex);
+        QVector3D hitPoint = origin + normDir * relayDist;
+        emit targetHit(hitPoint, HitType::CoolingVent);
+        emit shotFired(hitPoint, HitType::CoolingVent);
+        qDebug() << "[HeavyWeapon] Power relay" << hitRelayIndex << "hit!";
+        return HitType::CoolingVent;
     }
 
     // Case 1: Enemy hit before obstacle

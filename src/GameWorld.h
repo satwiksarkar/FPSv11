@@ -53,6 +53,9 @@ public:
      */
     Q_INVOKABLE QVector3D resolveCollision(const QVector3D &currentPos, const QVector3D &targetPos, float radius = 35.0f) const;
 
+    Q_INVOKABLE float getFloorHeight(float x, float z) const;
+    Q_INVOKABLE float getCeilingHeight(float x, float z) const;
+
     /**
      * @brief Fast DDA raycast against active level tiles (walls, crates, core).
      */

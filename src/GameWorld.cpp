@@ -105,6 +105,16 @@ QVector3D GameWorld::resolveCollision(const QVector3D &currentPos, const QVector
     return m_collisionSystem->resolveMovement(currentPos, targetPos, radius);
 }
 
+float GameWorld::getFloorHeight(float x, float z) const
+{
+    return m_levelManager ? m_levelManager->getFloorHeightAtWorldPos(x, z) : 0.0f;
+}
+
+float GameWorld::getCeilingHeight(float x, float z) const
+{
+    return m_levelManager ? m_levelManager->getCeilingHeightAtWorldPos(x, z) : 400.0f;
+}
+
 bool GameWorld::raycastDDA(const QVector3D &origin, const QVector3D &direction, float maxDist, float &outDist, QVector3D &outHitPos) const
 {
     if (m_collisionSystem && m_levelManager) {

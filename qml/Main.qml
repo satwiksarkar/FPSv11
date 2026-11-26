@@ -359,6 +359,37 @@ Window {
         itemType: Inventory.Medkit
     }
 
+    // Spawn Room Pickups (Rows 41..43, Cols 22..24)
+    Pickup { id: pickupSpawnMedkit1; itemType: Inventory.Medkit; position: Qt.vector3d(2250, 25, 4250) }
+    Pickup { id: pickupSpawnMedkit2; itemType: Inventory.Medkit; position: Qt.vector3d(2450, 25, 4250) }
+    Pickup { id: pickupSpawnFood1; itemType: Inventory.FoodPack; position: Qt.vector3d(2250, 25, 4150) }
+    Pickup { id: pickupSpawnFood2; itemType: Inventory.FoodPack; position: Qt.vector3d(2450, 25, 4150) }
+    Pickup { id: pickupSpawnBandage1; itemType: Inventory.Bandage; position: Qt.vector3d(2250, 25, 4350) }
+    Pickup { id: pickupSpawnBandage2; itemType: Inventory.Bandage; position: Qt.vector3d(2450, 25, 4350) }
+
+    // Level 1 Room Pickups
+    Pickup { id: pickupL1KitingMedkit; itemType: Inventory.Medkit; position: Qt.vector3d(650, 25, 3450) }
+    Pickup { id: pickupL1SpineBandage; itemType: Inventory.Bandage; position: Qt.vector3d(2450, 25, 3050) }
+    Pickup { id: pickupL1GalleryFood; itemType: Inventory.FoodPack; position: Qt.vector3d(4150, 25, 3450) }
+    Pickup { id: pickupL1GalleryBandage; itemType: Inventory.Bandage; position: Qt.vector3d(3450, 25, 3450) }
+    Pickup { id: pickupL1PatrolMedkit; itemType: Inventory.Medkit; position: Qt.vector3d(650, 25, 750) }
+    Pickup { id: pickupL1PatrolFood; itemType: Inventory.FoodPack; position: Qt.vector3d(1350, 25, 1550) }
+    Pickup { id: pickupL1VaultMedkit; itemType: Inventory.Medkit; position: Qt.vector3d(4350, 25, 750) }
+    Pickup { id: pickupL1VaultBandage; itemType: Inventory.Bandage; position: Qt.vector3d(3450, 25, 1550) }
+    Pickup { id: pickupL1StorageMedkit; itemType: Inventory.Medkit; position: Qt.vector3d(2750, 25, 750) }
+    Pickup { id: pickupL1StorageFood; itemType: Inventory.FoodPack; position: Qt.vector3d(1950, 25, 750) }
+
+    property var l1ExtraPickups: [
+        pickupSpawnMedkit1, pickupSpawnMedkit2,
+        pickupSpawnFood1, pickupSpawnFood2,
+        pickupSpawnBandage1, pickupSpawnBandage2,
+        pickupL1KitingMedkit, pickupL1SpineBandage,
+        pickupL1GalleryFood, pickupL1GalleryBandage,
+        pickupL1PatrolMedkit, pickupL1PatrolFood,
+        pickupL1VaultMedkit, pickupL1VaultBandage,
+        pickupL1StorageMedkit, pickupL1StorageFood
+    ]
+
     // ==================== LEVEL FLOW & STATS PERSISTENCE ====================
     function applyWeaponDifficultyTuning() {
         if (levelManager.currentLevel === 3) {
@@ -462,13 +493,39 @@ Window {
 
         // Medical Pickups placement for all 3 levels
         if (lvl === 1) {
-            pickupFood.position = Qt.vector3d(250, 25, 2650)
-            pickupBandage.position = Qt.vector3d(550, 25, 2350)
-            pickupMedkit.position = Qt.vector3d(750, 25, 1750)
-            pickupExtraBandage.position = Qt.vector3d(2550, 25, 1050)
-            pickupExtraFood.position = Qt.vector3d(2550, 25, 350)
-            pickupExtraMedkit.position = Qt.vector3d(1450, 25, 2550)
+            // Spawn Room Pickups (Rows 41..43, Cols 22..24)
+            pickupSpawnMedkit1.position = Qt.vector3d(2250, 25, 4250)
+            pickupSpawnMedkit2.position = Qt.vector3d(2450, 25, 4250)
+            pickupSpawnFood1.position = Qt.vector3d(2250, 25, 4150)
+            pickupSpawnFood2.position = Qt.vector3d(2450, 25, 4150)
+            pickupSpawnBandage1.position = Qt.vector3d(2250, 25, 4350)
+            pickupSpawnBandage2.position = Qt.vector3d(2450, 25, 4350)
+
+            // Room Pickups throughout Level 1
+            pickupFood.position = Qt.vector3d(650, 25, 2750)       // Key 1 Kiting Bay
+            pickupBandage.position = Qt.vector3d(1350, 25, 3450)   // Key 1 Kiting Bay
+            pickupL1KitingMedkit.position = Qt.vector3d(650, 25, 3450)
+            pickupL1SpineBandage.position = Qt.vector3d(2450, 25, 3050) // Central Spine
+            pickupExtraFood.position = Qt.vector3d(2250, 25, 2050)      // Central Spine
+            pickupMedkit.position = Qt.vector3d(3450, 25, 2850)        // Key 2 Shooting Gallery
+            pickupL1GalleryFood.position = Qt.vector3d(4150, 25, 3450)
+            pickupL1GalleryBandage.position = Qt.vector3d(3450, 25, 3450)
+            pickupL1PatrolMedkit.position = Qt.vector3d(650, 25, 750)  // Key 3 Sentinel Patrol
+            pickupL1PatrolFood.position = Qt.vector3d(1350, 25, 1550)
+            pickupL1VaultMedkit.position = Qt.vector3d(4350, 25, 750)    // Key 4 Mixed Vault
+            pickupL1VaultBandage.position = Qt.vector3d(3450, 25, 1550)
+            pickupL1StorageMedkit.position = Qt.vector3d(2750, 25, 750)  // Storage Room
+            pickupL1StorageFood.position = Qt.vector3d(1950, 25, 750)
+            pickupExtraMedkit.position = Qt.vector3d(2350, 25, 1050)
+            pickupExtraBandage.position = Qt.vector3d(2550, 25, 1250)
+
+            for (var spi = 0; spi < l1ExtraPickups.length; ++spi) {
+                l1ExtraPickups[spi].reset()
+            }
         } else if (lvl === 2) {
+            for (var spi2 = 0; spi2 < l1ExtraPickups.length; ++spi2) {
+                l1ExtraPickups[spi2].isCollected = true
+            }
             pickupBandage.position = Qt.vector3d(450, 25, 6150)
             pickupMedkit.position = Qt.vector3d(950, 25, 6150)
             pickupExtraBandage.position = Qt.vector3d(450, 25, 3850)
@@ -476,6 +533,9 @@ Window {
             pickupFood.position = Qt.vector3d(3250, 25, 3450)
             pickupExtraFood.position = Qt.vector3d(4450, 25, 5550)
         } else if (lvl === 3) {
+            for (var spi3 = 0; spi3 < l1ExtraPickups.length; ++spi3) {
+                l1ExtraPickups[spi3].isCollected = true
+            }
             pickupBandage.position = Qt.vector3d(1850, 25, 3450)
             pickupMedkit.position = Qt.vector3d(2250, 25, 3450)
             pickupFood.position = Qt.vector3d(2050, 25, 3650)
@@ -545,13 +605,9 @@ Window {
     function spawnEnemiesForLevel() {
         var currentLvl = levelManager.currentLevel
         if (currentLvl === 1) {
-            // Level 1: Spawn corridor patrol Drones
-            var count = levelManager.corridorDroneSpawnCount()
-            for (var i = 0; i < count; ++i) {
-                var spawn = levelManager.corridorDroneSpawn(i)
-                enemyManager.spawnDrone(spawn)
-            }
-            console.log("[Main] Level 1 Corridor Drones spawned. Active:", enemyManager.activeCount)
+            // Level 1: Dynamic enemy population (8-14 weighted Shock Drones, Ranged Drones, Sentinels)
+            levelManager.spawnLevel1DynamicEnemies(enemyManager)
+            console.log("[Main] Level 1 Dynamic Enemies spawned. Active:", enemyManager.activeCount)
         } else if (currentLvl === 2) {
             // Level 2: Spawn Sentinels at hallways & vaults
             var sCount = levelManager.sentinelSpawnCount()
@@ -630,6 +686,7 @@ Window {
     readonly property string gasLeakSectorName: levelManager ? levelManager.gasLeakRoomName : ""
     readonly property real gasLeakRemainingSeconds: levelManager ? levelManager.gasLeakTimeRemaining : 0.0
     readonly property int gasLeakRepairStage: levelManager ? levelManager.gasLeakRepairStage : 0
+    readonly property int gasLeakSector: 1
     property bool playerInGasZone: false
 
     Connections {
@@ -658,32 +715,33 @@ Window {
     // ==================== DYNAMIC BOT REINFORCEMENT SPAWNER (LEVEL 1) ====================
     Timer {
         id: level1DroneRespawnTimer
-        interval: 16000
+        interval: 45000
         running: gameManager.isPlaying && levelManager.currentLevel === 1
         repeat: true
         onTriggered: {
-            if (enemyManager.activeCount < 4) {
+            if (enemyManager.activeCount < 3) {
                 var pPos = player.position
                 var spawns = [
-                    Qt.vector3d(3950, 0, 5650),
-                    Qt.vector3d(6250, 0, 2650),
-                    Qt.vector3d(1850, 0, 2650),
-                    Qt.vector3d(6850, 0, 6450),
-                    Qt.vector3d(2450, 0, 1850)
+                    Qt.vector3d(850, 0, 2850),
+                    Qt.vector3d(4150, 0, 2650),
+                    Qt.vector3d(1050, 0, 850),
+                    Qt.vector3d(3550, 0, 850),
+                    Qt.vector3d(2350, 0, 2150)
                 ]
                 var spawned = 0
-                for (var i = 0; i < spawns.length && spawned < 3; ++i) {
+                for (var i = 0; i < spawns.length && spawned < 1; ++i) {
                     var sp = spawns[i]
                     var dx = sp.x - pPos.x
                     var dz = sp.z - pPos.z
-                    if (dx * dx + dz * dz > 1400 * 1400) {
-                        enemyManager.spawnDrone(sp)
+                    if (dx * dx + dz * dz > 1200 * 1200) {
+                        var canShoot = false
+                        enemyManager.spawnDrone(sp, canShoot)
                         spawned++
                     }
                 }
                 if (spawned > 0) {
                     playSound("enemy_gunshot")
-                    root.hitNotificationText = "SECURITY ALERT: Defense grid deployed " + spawned + " reinforcement drones!"
+                    root.hitNotificationText = "SECURITY ALERT: Defense grid deployed reinforcement drone."
                     root.hitNotificationColor = "#e67e22"
                     hitNotificationTimer.restart()
                 }
@@ -718,6 +776,10 @@ Window {
             heavyWeapon.update(frameTime)
             gameWorld.door.update(frameTime)
             levelManager.updateGasEmergency(frameTime, player)
+            if (levelManager.currentLevel === 1) {
+                levelManager.updateSensors(frameTime, player.position, player.isSprinting, enemyManager)
+                levelManager.checkStorageAmbush(player.position, enemyManager)
+            }
             levelManager.updateKeys(frameTime, player.position, !player.isDead)
             levelManager.updateDoors(frameTime,
                                      player.position,
@@ -817,6 +879,27 @@ Window {
                 root.hitNotificationColor = "#e74c3c"
                 hitNotificationTimer.restart()
                 playSound("pickup")
+            }
+
+            // Level 1 Extra Pickups Collection (including Spawn Room)
+            if (levelManager.currentLevel === 1) {
+                for (var pi = 0; pi < l1ExtraPickups.length; ++pi) {
+                    var pItem = l1ExtraPickups[pi]
+                    if (!pItem) continue
+                    pItem.update(frameTime)
+                    if (!pItem.isCollected && pItem.checkCollection(player.position)) {
+                        player.inventory.addItem(pItem.itemType, 1)
+                        var pName = (pItem.itemType === Inventory.FoodPack) ? "FOOD PACK (+20 HP) [PRESS 1]"
+                                  : ((pItem.itemType === Inventory.Bandage) ? "BANDAGE (+30 HP) [PRESS 2]"
+                                  : "MEDKIT (+50 HP) [PRESS 3]")
+                        var pColor = (pItem.itemType === Inventory.FoodPack) ? "#2ecc71"
+                                   : ((pItem.itemType === Inventory.Bandage) ? "#3498db" : "#e74c3c")
+                        root.hitNotificationText = "COLLECTED " + pName
+                        root.hitNotificationColor = pColor
+                        hitNotificationTimer.restart()
+                        playSound("pickup")
+                    }
+                }
             }
 
             // Tile 7: Heavy Weapon (Plasma Repeater) Collection
@@ -1432,6 +1515,29 @@ Window {
                 materials: [ PrincipledMaterial { baseColor: "#e74c3c"; roughness: 0.5 } ]
             }
         }
+
+        // ==================== LEVEL 1 EXTRA 3D VOXEL PICKUPS ====================
+        Repeater3D {
+            model: root.l1ExtraPickups
+            delegate: Node {
+                position: modelData.renderPosition
+                eulerRotation: Qt.vector3d(0, modelData.rotationY, 0)
+                visible: levelManager.currentLevel === 1 && !modelData.isCollected
+
+                Model {
+                    source: "#Cube"
+                    scale: (modelData.itemType === Inventory.Medkit)
+                           ? Qt.vector3d(0.40, 0.40, 0.40)
+                           : Qt.vector3d(0.35, 0.35, 0.35)
+                    materials: [ PrincipledMaterial {
+                        baseColor: (modelData.itemType === Inventory.FoodPack)
+                                   ? "#2ecc71"
+                                   : ((modelData.itemType === Inventory.Bandage) ? "#3498db" : "#e74c3c")
+                        roughness: 0.5
+                    } ]
+                }
+            }
+        }
     }
 
     // ==================== INPUT HANDLING & CONTROLS ====================
@@ -1479,13 +1585,23 @@ Window {
 
             if (!gameManager.isPlaying) return
 
+            if (levelManager.keypadVisible) {
+                if (event.key === Qt.Key_Escape) {
+                    levelManager.closeExitKeypad()
+                    root.mouseLookActive = true
+                }
+                event.accepted = true
+                return
+            }
+
             if (event.key === Qt.Key_W) { moveForward = true; syncMovement() }
             else if (event.key === Qt.Key_S) { moveBackward = true; syncMovement() }
             else if (event.key === Qt.Key_A) { moveLeft = true; syncMovement() }
             else if (event.key === Qt.Key_D) { moveRight = true; syncMovement() }
             else if (event.key === Qt.Key_Space) player.jump()
             else if (event.key === Qt.Key_Shift) player.setSprint(true)
-            else if (event.key === Qt.Key_Control || event.key === Qt.Key_C) player.setCrouch(true)
+            else if (event.key === Qt.Key_Control) player.setCrouch(true)
+            else if (event.key === Qt.Key_C) player.setCrawl(true)
             else if (event.key === Qt.Key_Q) player.switchWeapon()
             else if (event.key === Qt.Key_R) root.activeWeapon.reload()
             else if (event.key === Qt.Key_1) player.useFoodPack()
@@ -1543,14 +1659,15 @@ Window {
         }
 
         Keys.onReleased: function(event) {
-            if (!gameManager.isPlaying) return
+            if (!gameManager.isPlaying || levelManager.keypadVisible) return
 
             if (event.key === Qt.Key_W) { moveForward = false; syncMovement() }
             else if (event.key === Qt.Key_S) { moveBackward = false; syncMovement() }
             else if (event.key === Qt.Key_A) { moveLeft = false; syncMovement() }
             else if (event.key === Qt.Key_D) { moveRight = false; syncMovement() }
             else if (event.key === Qt.Key_Shift) player.setSprint(false)
-            else if (event.key === Qt.Key_Control || event.key === Qt.Key_C) player.setCrouch(false)
+            else if (event.key === Qt.Key_Control) player.setCrouch(false)
+            else if (event.key === Qt.Key_C) player.setCrawl(false)
             else if (event.key === Qt.Key_E && !event.isAutoRepeat) eKeyHeld = false
 
             event.accepted = true
@@ -1574,7 +1691,7 @@ Window {
             }
 
             onPressed: function(mouse) {
-                if (!gameManager.isPlaying || puzzleManager.activePuzzle > 0) return
+                if (!gameManager.isPlaying || puzzleManager.activePuzzle > 0 || levelManager.keypadVisible) return
 
                 if (!root.mouseLookActive) {
                     root.mouseLookActive = true
@@ -1591,7 +1708,7 @@ Window {
             }
 
             onPositionChanged: function(mouse) {
-                if (!root.mouseLookActive || !gameManager.isPlaying) return
+                if (!root.mouseLookActive || !gameManager.isPlaying || levelManager.keypadVisible) return
 
                 if (firstMove) {
                     lastX = mouse.x
@@ -1705,6 +1822,24 @@ Window {
         playerRef: player
         puzzleManagerRef: puzzleManager
         enemyManagerRef: enemyManager
+
+        isCrawling: player.isCrawling
+        isCrouching: player.isCrouching
+        isSprinting: player.isSprinting
+    }
+
+    Connections {
+        target: levelManager
+        function onKeypadVisibleChanged() {
+            if (levelManager.keypadVisible) {
+                root.mouseLookActive = false
+                inputHandler.moveForward = false
+                inputHandler.moveBackward = false
+                inputHandler.moveLeft = false
+                inputHandler.moveRight = false
+                inputHandler.syncMovement()
+            }
+        }
     }
 
     // ==================== LEVEL 1 INTERACTIVE PUZZLE OVERLAYS ====================
