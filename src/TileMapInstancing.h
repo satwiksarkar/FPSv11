@@ -20,6 +20,7 @@ class TileMapInstancing : public QQuick3DInstancing
 
     Q_PROPERTY(LevelManager* levelManager READ levelManager WRITE setLevelManager NOTIFY levelManagerChanged)
     Q_PROPERTY(int tileType READ tileType WRITE setTileType NOTIFY tileTypeChanged)
+    Q_PROPERTY(int wallMaterialType READ wallMaterialType WRITE setWallMaterialType NOTIFY wallMaterialTypeChanged)
     Q_PROPERTY(int blockHeight READ blockHeight WRITE setBlockHeight NOTIFY blockHeightChanged)
     Q_PROPERTY(QColor baseColor READ baseColor WRITE setBaseColor NOTIFY baseColorChanged)
     Q_PROPERTY(int instanceCount READ instanceCount NOTIFY instanceCountChanged)
@@ -33,6 +34,9 @@ public:
     int tileType() const;
     void setTileType(int type);
 
+    int wallMaterialType() const;
+    void setWallMaterialType(int type);
+
     int blockHeight() const;
     void setBlockHeight(int height);
 
@@ -44,6 +48,7 @@ public:
 signals:
     void levelManagerChanged();
     void tileTypeChanged();
+    void wallMaterialTypeChanged();
     void blockHeightChanged();
     void baseColorChanged();
     void instanceCountChanged();
@@ -54,6 +59,7 @@ protected:
 private:
     LevelManager *m_levelManager;
     int m_tileType;
+    int m_wallMaterialType;
     int m_blockHeight;
     QColor m_baseColor;
     int m_cachedInstanceCount;

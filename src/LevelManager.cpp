@@ -109,15 +109,6 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
 
         float bs = GameConfig::BLOCK_SIZE;
 
-        // Level 1: Gas Leak completely removed
-        m_levelTime = 0.0f;
-        m_gasLeakActive = false;
-        m_gasLeakResolved = true;
-        m_gasLeakTimeRemaining = 9999.0f;
-        m_gasLeakRepairStage = 3;
-        m_gasLeakTriggerTime = 1e9f;
-        emit gasEmergencyChanged();
-
         // Level 1: Shootable Power Relays & Laser Cage (Key 2: Shooting Gallery)
         m_powerRelays.clear();
         m_powerRelays.append({ QVector3D(3650.0f, 380.0f, 2750.0f), false, 35.0f });
@@ -170,6 +161,7 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
     if (resetLevelKeys) {
         m_keyMasks[m_currentLevel] = 0;
     }
+    resetGasEmergency();
 
     if (m_currentLevel == 3) {
         m_bossCompleted = m_bossArena ? m_bossArena->isBossDefeated() : false;
@@ -258,26 +250,6 @@ bool LevelManager::isSolidTile(int row, int col) const
     // Any TileCode::Door without an explicit Door instance defaults to solid/closed
     if (getTile(row, col) == TileCode::Door) {
         return true;
-    }
-
-    // Level 1: Dynamic chamber barriers governed by PuzzleManager
-    if (m_currentLevel == 1 && m_puzzleManager) {
-        // Cargo barrier: row 6..7, col 9
-        if (m_puzzleManager->isBarrierBlocking(1) && (row == 6 || row == 7) && col == 9) {
-            return true;
-        }
-        // Research barrier: row 10, cols 64..65
-        if (m_puzzleManager->isBarrierBlocking(2) && row == 10 && (col == 64 || col == 65)) {
-            return true;
-        }
-        // Admin barrier: row 70, cols 12..13
-        if (m_puzzleManager->isBarrierBlocking(3) && row == 70 && (col == 12 || col == 13)) {
-            return true;
-        }
-        // Maintenance barrier: row 72, col 68
-        if (m_puzzleManager->isBarrierBlocking(4) && row == 72 && col == 68) {
-            return true;
-        }
     }
 
     return false;
@@ -1414,6 +1386,7 @@ void LevelManager::resetMissionKeys(int level)
     m_keyMasks[static_cast<size_t>(level)] = 0;
     if (level == m_currentLevel) {
         syncKeysFromMask();
+        resetGasEmergency();
         if (m_targetDoor && m_targetDoor->doorState() == Door::DoorState::Locked) {
             updateInteractionPrompt(QVector3D(), nullptr);
         }
@@ -1578,7 +1551,7 @@ QVector3D LevelManager::gasStationPosition() const
 
 void LevelManager::triggerGasLeakEmergency()
 {
-    if (m_currentLevel == 1 || m_gasLeakActive) return;
+    if (m_currentLevel != 2 || m_gasLeakActive) return;
     m_gasLeakActive = true;
     m_gasLeakTimeRemaining = 30.0f;
     m_gasLeakRepairStage = 0;
@@ -1598,9 +1571,27 @@ void LevelManager::purgeGasEmergency()
     qDebug() << "[LevelManager] Gas emergency resolved!";
 }
 
+void LevelManager::resetGasEmergency()
+{
+    m_levelTime = 0.0f;
+    m_gasLeakActive = false;
+    if (m_currentLevel == 2) {
+        m_gasLeakResolved = false;
+        m_gasLeakRepairStage = 0;
+        m_gasLeakTimeRemaining = 30.0f;
+        m_gasLeakTriggerTime = 135.0f;
+    } else {
+        m_gasLeakResolved = true;
+        m_gasLeakRepairStage = 3;
+        m_gasLeakTimeRemaining = 9999.0f;
+        m_gasLeakTriggerTime = 1e9f;
+    }
+    emit gasEmergencyChanged();
+}
+
 void LevelManager::interactGasStation(const QVector3D &playerPos)
 {
-    if (m_currentLevel == 1 || !m_gasLeakActive) return;
+    if (m_currentLevel != 2 || !m_gasLeakActive) return;
     float dist = (playerPos - m_gasStationPos).length();
     if (dist > 250.0f) return;
 
@@ -1615,7 +1606,7 @@ void LevelManager::interactGasStation(const QVector3D &playerPos)
 
 void LevelManager::updateGasEmergency(float deltaTime, Player *player)
 {
-    if (m_currentLevel == 1 || deltaTime <= 0.0f) return;
+    if (m_currentLevel != 2 || deltaTime <= 0.0f) return;
 
     if (!m_gasLeakActive && !m_gasLeakResolved) {
         m_levelTime += deltaTime;
@@ -1760,6 +1751,7 @@ void LevelManager::setKeypadVisible(bool visible)
 
 void LevelManager::openExitKeypad()
 {
+    if (m_currentLevel != 1) return;
     setKeypadVisible(true);
 }
 

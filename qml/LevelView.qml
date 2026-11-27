@@ -13,6 +13,7 @@ Node {
     id: root
 
     property var levelManager: null
+    property var player: null
     property var bossArena: null
     property var animationManager: null
     property var puzzleManager: null
@@ -23,10 +24,26 @@ Node {
     readonly property real mapWidthUnits: levelManager ? levelManager.mapWidth * levelManager.blockSize : 1600.0
     readonly property real mapHeightUnits: levelManager ? levelManager.mapHeight * levelManager.blockSize : 1600.0
 
-    // ==================== 16x16 NEAREST-FILTERED TEXTURES ====================
+    // ==================== 16x16 / 64x64 NEAREST-FILTERED TEXTURES ====================
     Texture {
         id: texSteelWall
         source: "../assets/textures/steel_wall.png"
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
+    }
+
+    Texture {
+        id: texStoneWall
+        source: "../assets/textures/stone_wall.png"
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
+    }
+
+    Texture {
+        id: texStoneWallAlt
+        source: "../assets/textures/stone_wall_alt.png"
         magFilter: Texture.Nearest
         minFilter: Texture.Nearest
         generateMipmaps: false
@@ -48,6 +65,28 @@ Node {
         generateMipmaps: false
         scaleU: Math.max(1.0, root.mapWidthUnits / 100.0)
         scaleV: Math.max(1.0, root.mapHeightUnits / 100.0)
+        tilingModeHorizontal: Texture.Repeat
+        tilingModeVertical: Texture.Repeat
+    }
+
+    Texture {
+        id: texFloorDeck
+        source: "../assets/textures/floor_deck.png"
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
+        scaleU: Math.max(1.0, root.mapWidthUnits / 100.0)
+        scaleV: Math.max(1.0, root.mapHeightUnits / 100.0)
+        tilingModeHorizontal: Texture.Repeat
+        tilingModeVertical: Texture.Repeat
+    }
+
+    Texture {
+        id: texFloorHallway
+        source: "../assets/textures/floor_hallway.png"
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
         tilingModeHorizontal: Texture.Repeat
         tilingModeVertical: Texture.Repeat
     }
@@ -180,27 +219,167 @@ Node {
         }
     }
 
+    // ==================== ATMOSPHERIC CEILING LIGHT FIXTURE COMPONENT ====================
+    component CeilingLightFixture: Node {
+        id: fixture
+        property color fixtureColor: "#FF1E1E"
+        property vector3d emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+        property color pointLightColor: "#FF2A2A"
+        property real lightBrightness: 3.5
+        property real cullDistance: 1600.0
+
+        // Recessed Dark Steel Housing flush against ceiling
+        Model {
+            position: Qt.vector3d(0, 4, 0)
+            source: "#Cube"
+            scale: Qt.vector3d(0.9, 0.08, 1.5)
+            materials: [
+                PrincipledMaterial {
+                    baseColor: "#1a202c"
+                    metalness: 0.8
+                    roughness: 0.3
+                }
+            ]
+        }
+
+        // Emissive Light Lens (Flush against Ceiling)
+        Model {
+            position: Qt.vector3d(0, 0, 0)
+            source: "#Cube"
+            scale: Qt.vector3d(0.7, 0.04, 1.3)
+            materials: [
+                PrincipledMaterial {
+                    baseColor: fixture.fixtureColor
+                    lighting: PrincipledMaterial.NoLighting
+                    emissiveFactor: fixture.emissiveFactor
+                }
+            ]
+        }
+
+        // Downward PointLight with Distance Culling for Performance (40+ FPS)
+        PointLight {
+            position: Qt.vector3d(0, -15, 0)
+            color: fixture.pointLightColor
+            brightness: fixture.lightBrightness
+            quadraticFade: 0.00018
+            constantFade: 1.0
+            linearFade: 0.0
+            visible: {
+                if (!root.player || !root.player.position) return true;
+                var ppos = root.player.position;
+                var fx = (fixture.position ? fixture.position.x : fixture.x);
+                var fz = (fixture.position ? fixture.position.z : fixture.z);
+                var dx = fx - ppos.x;
+                var dz = fz - ppos.z;
+                return (dx * dx + dz * dz) < (fixture.cullDistance * fixture.cullDistance);
+            }
+        }
+    }
+
+    // ==================== WALL PRINCIPLED MATERIALS ====================
+    // Steel Wall Material: high metalness (~0.75), low roughness (~0.35) for flashlight and light reflection
+    PrincipledMaterial {
+        id: matSteelWall
+        baseColorMap: texSteelWall
+        baseColor: "#e0e4eb"
+        metalness: 0.75
+        roughness: 0.35
+    }
+
+    // Stone/Concrete Wall Material (Bolted panels)
+    PrincipledMaterial {
+        id: matStoneWall
+        baseColorMap: texStoneWall
+        baseColor: "#d5d8de"
+        metalness: 0.15
+        roughness: 0.85
+    }
+
+    // Stone/Concrete Wall Material (Plain un-riveted variant)
+    PrincipledMaterial {
+        id: matStoneWallAlt
+        baseColorMap: texStoneWallAlt
+        baseColor: "#d5d8de"
+        metalness: 0.15
+        roughness: 0.85
+    }
+
+    // Level 1 & Level 2 Dark Industrial Metal Deck-Plate Floor Material
+    PrincipledMaterial {
+        id: matFloorDeck
+        baseColorMap: texFloorDeck
+        metalness: 0.55
+        roughness: 0.45
+    }
+
+    // Hallway Walkway Floor Material
+    PrincipledMaterial {
+        id: matFloorHallway
+        baseColorMap: texFloorHallway
+        metalness: 0.55
+        roughness: 0.45
+    }
+
+    // Level 3 Floor Material (Original untouched)
+    PrincipledMaterial {
+        id: matFloorLevel3
+        baseColorMap: texFloorPlate
+        roughness: 0.88
+        metalness: 0.2
+    }
+
     // ==================== INSTANCED VOXEL BLOCK TABLES ====================
-    // 1. Solid Walls (Tile 1, Height 3 blocks = 300 units; 6 blocks = 600 units in Level 3)
+    // 1. Solid Walls - Steel Walls (Corridors, Central Spine, outer bypasses, security corridors; and all walls in Level 3)
     TileMapInstancing {
-        id: wallInstancing
+        id: steelWallInstancing
         levelManager: root.levelManager
         tileType: 1
+        wallMaterialType: (root.levelManager && root.levelManager.currentLevel === 3) ? 0 : 1
         blockHeight: (root.levelManager && root.levelManager.currentLevel === 3) ? 6 : 3
         baseColor: "#e0e4eb"
     }
 
     Model {
-        id: wallModel
+        id: steelWallModel
         source: "#Cube"
-        instancing: wallInstancing
-        materials: [
-            PrincipledMaterial {
-                baseColorMap: texSteelWall
-                roughness: 0.85
-                metalness: 0.25
-            }
-        ]
+        instancing: steelWallInstancing
+        materials: [ matSteelWall ]
+    }
+
+    // 2. Solid Walls - Stone/Concrete Bolted Walls (Standard Rooms)
+    TileMapInstancing {
+        id: stoneWallInstancing
+        levelManager: root.levelManager
+        tileType: 1
+        wallMaterialType: 2
+        blockHeight: (root.levelManager && root.levelManager.currentLevel === 3) ? 6 : 3
+        baseColor: "#d5d8de"
+    }
+
+    Model {
+        id: stoneWallModel
+        source: "#Cube"
+        instancing: stoneWallInstancing
+        visible: root.levelManager && root.levelManager.currentLevel !== 3
+        materials: [ matStoneWall ]
+    }
+
+    // 3. Solid Walls - Stone/Concrete Plain Un-riveted Walls (Alternating every 2-3 tiles in Standard Rooms)
+    TileMapInstancing {
+        id: stoneWallAltInstancing
+        levelManager: root.levelManager
+        tileType: 1
+        wallMaterialType: 3
+        blockHeight: (root.levelManager && root.levelManager.currentLevel === 3) ? 6 : 3
+        baseColor: "#d5d8de"
+    }
+
+    Model {
+        id: stoneWallAltModel
+        source: "#Cube"
+        instancing: stoneWallAltInstancing
+        visible: root.levelManager && root.levelManager.currentLevel !== 3
+        materials: [ matStoneWallAlt ]
     }
 
     // 2. Shipping Crates (Tile 2, Height 2 blocks = 200 units)
@@ -368,19 +547,118 @@ Node {
     }
 
     // ==================== FLAT LEVEL FLOOR & CEILING ====================
-    // Single large flat floor box
+    // Single large flat floor box (Level 1 & 2: Dark Industrial Metal Deck Plate; Level 3: Original)
     Model {
         id: floorBox
         source: "#Cube"
         scale: Qt.vector3d(root.mapWidthUnits / 100.0, 0.2, root.mapHeightUnits / 100.0)
         position: Qt.vector3d(root.mapWidthUnits * 0.5, -10, root.mapHeightUnits * 0.5)
         materials: [
+            (root.levelManager && root.levelManager.currentLevel === 3) ? matFloorLevel3 : matFloorDeck
+        ]
+    }
+
+    // Hallway Walkway Strip Component (Level 1 & Level 2)
+    component WalkwayStrip: Model {
+        id: strip
+        property real widthBlocks: 2.0
+        property real lengthBlocks: 10.0
+        source: "#Cube"
+        scale: Qt.vector3d(widthBlocks, 0.01, lengthBlocks)
+        materials: [
             PrincipledMaterial {
-                baseColorMap: texFloorPlate
-                roughness: 0.88
-                metalness: 0.2
+                baseColorMap: Texture {
+                    source: "../assets/textures/floor_hallway.png"
+                    magFilter: Texture.Nearest
+                    minFilter: Texture.Nearest
+                    generateMipmaps: false
+                    scaleU: strip.widthBlocks
+                    scaleV: strip.lengthBlocks
+                    tilingModeHorizontal: Texture.Repeat
+                    tilingModeVertical: Texture.Repeat
+                }
+                metalness: 0.55
+                roughness: 0.45
             }
         ]
+    }
+
+    // ==================== LEVEL 1 HALLWAY WALKWAYS ====================
+    Node {
+        id: level1WalkwaysNode
+        visible: root.levelManager && root.levelManager.currentLevel === 1
+
+        // 1. Central Spine Transit Corridor (North-South, Row 5..40, Col 23 center)
+        WalkwayStrip {
+            position: Qt.vector3d(2350, 0.5, 2300)
+            widthBlocks: 2.0
+            lengthBlocks: 36.0
+        }
+
+        // 2. West Outer Bypass Hallway (North-South, Row 18..24, Col 6.5)
+        WalkwayStrip {
+            position: Qt.vector3d(650, 0.5, 2150)
+            widthBlocks: 1.2
+            lengthBlocks: 7.0
+        }
+
+        // 3. East Outer Bypass Hallway (North-South, Row 18..24, Col 42.5)
+        WalkwayStrip {
+            position: Qt.vector3d(4250, 0.5, 2150)
+            widthBlocks: 1.2
+            lengthBlocks: 7.0
+        }
+
+        // 4. North Transverse Connector Corridor (East-West, Row 10, Z=1050)
+        WalkwayStrip {
+            position: Qt.vector3d(2350, 0.5, 1050)
+            widthBlocks: 1.2
+            lengthBlocks: 20.0
+            eulerRotation: Qt.vector3d(0, 90, 0)
+        }
+
+        // 5. South Transverse Connector Corridor (East-West, Row 32, Z=3250)
+        WalkwayStrip {
+            position: Qt.vector3d(2350, 0.5, 3250)
+            widthBlocks: 1.2
+            lengthBlocks: 20.0
+            eulerRotation: Qt.vector3d(0, 90, 0)
+        }
+    }
+
+    // ==================== LEVEL 2 HALLWAY WALKWAYS ====================
+    Node {
+        id: level2WalkwaysNode
+        visible: root.levelManager && root.levelManager.currentLevel === 2
+
+        // 1. West Corridor (Main Arterial from Spawn, North-South, Row 36..57, Col 4.5)
+        WalkwayStrip {
+            position: Qt.vector3d(450, 0.5, 4650)
+            widthBlocks: 1.5
+            lengthBlocks: 21.0
+        }
+
+        // 2. North Access Corridor (East-West, Row 11..12, Z=1200, Col 35..50)
+        WalkwayStrip {
+            position: Qt.vector3d(4250, 0.5, 1200)
+            widthBlocks: 1.5
+            lengthBlocks: 15.0
+            eulerRotation: Qt.vector3d(0, 90, 0)
+        }
+
+        // 3. East Security Corridor (North-South, Row 20..46, Z=3300, Col 55)
+        WalkwayStrip {
+            position: Qt.vector3d(5500, 0.5, 3300)
+            widthBlocks: 1.8
+            lengthBlocks: 26.0
+        }
+
+        // 4. Descent Approach Corridor (North-South, Row 48..52, Z=5000, Col 46)
+        WalkwayStrip {
+            position: Qt.vector3d(4600, 0.5, 5000)
+            widthBlocks: 1.5
+            lengthBlocks: 4.0
+        }
     }
 
     // Single large flat ceiling box for Level 2 & 3 (raised to 600 in Level 3 for grand cathedral arena)
@@ -1166,17 +1444,8 @@ Node {
                 materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
             }
 
-            // Overhead Industrial Floodlights
-            PointLight {
-                position: Qt.vector3d(3650, 680, 2900)
-                color: "#f0f6fc"
-                brightness: 6.0
-            }
-            PointLight {
-                position: Qt.vector3d(3950, 680, 3200)
-                color: "#f0f6fc"
-                brightness: 6.0
-            }
+            // STRICT EXCEPTION: Key 2 Room has ZERO ceiling lights or overhead floodlights per strict specification.
+            // Room is completely dark so player must rely on flashlight [F] and enemy visor glow.
 
             // Staggered Waist-High Firing Barricades (1.2m tall = 120 units, Y=60)
             // Row 1 (Z=2850)
@@ -1281,11 +1550,7 @@ Node {
                         lighting: PrincipledMaterial.NoLighting
                     } ]
                 }
-                PointLight {
-                    position: Qt.vector3d(0, 100, 0)
-                    color: "#ff0033"
-                    brightness: 6.0
-                }
+                // Laser cage containment plane and posts provide unlit neon visibility without casting ambient light
             }
 
             // Floating 3D Navigation Arrow directly over the Laser Cage Alcove at (4150, 215, 2650)
@@ -1343,12 +1608,7 @@ Node {
                         } ]
                     }
 
-                    // Target Beacon Light
-                    PointLight {
-                        position: Qt.vector3d(0, 0, 0)
-                        color: "#ff0055"
-                        brightness: 8.0
-                    }
+                    // Target bullseye sphere provides unlit neon beacon without casting ambient light
                 }
             }
 
@@ -1394,11 +1654,7 @@ Node {
                         }
                     } ]
                 }
-                PointLight {
-                    position: Qt.vector3d(0, 0, 15)
-                    color: "#00e5ff"
-                    brightness: 3.0
-                }
+                // Wall monitor uses emissive unlit display without casting ambient light into the dark room
             }
         }
 
@@ -2042,5 +2298,222 @@ Node {
             }
         }
 
+    }
+
+    // ==================== ATMOSPHERIC CEILING LIGHTS (LEVEL 1) ====================
+    Node {
+        id: level1CeilingLightsNode
+        visible: root.levelManager && root.levelManager.currentLevel === 1
+
+        // --- Hallway Red Lockdown Lights (Central Spine & Outer Bypasses) ---
+        // Central Spine (Y=445 flush against Y=450 ceiling; Y=295 at vestibule)
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 445, 3750)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 445, 3150)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 445, 2550)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 445, 1950)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 445, 1350)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 295, 450)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+
+        // Outer Bypass Hallways (Y=295 flush against Y=300 ceiling)
+        CeilingLightFixture {
+            position: Qt.vector3d(650, 295, 2150)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(4250, 295, 2150)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+
+        // --- Standard Room Cool-White / Ice-Blue Lights (#D8E8FF) ---
+        // Spawn Airlock
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 295, 4250)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Key 1 Room (The Vault / Kiting Bay)
+        CeilingLightFixture {
+            position: Qt.vector3d(950, 295, 3150)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Storage Room (Central Storage)
+        CeilingLightFixture {
+            position: Qt.vector3d(2350, 440, 1750)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Key 3 Room (Sentinel Patrol)
+        CeilingLightFixture {
+            position: Qt.vector3d(950, 295, 950)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Key 4 Room (Mixed Vault & Breaker Panel - High Ceiling at Y=750)
+        CeilingLightFixture {
+            position: Qt.vector3d(3850, 740, 950)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 5.0
+        }
+        // NOTE: STRICT EXCEPTION - Level 1 Key 2 Room (rows 21..36, cols 33..45; X: 3300..4300, Z: 2400..3600)
+        // has ZERO ceiling light fixtures and ZERO PointLight nodes. Completely dark.
+    }
+
+    // ==================== ATMOSPHERIC CEILING LIGHTS (LEVEL 2) ====================
+    Node {
+        id: level2CeilingLightsNode
+        visible: root.levelManager && root.levelManager.currentLevel === 2
+
+        // --- Hallway Red Lockdown Lights (Level 2 Main Corridors) ---
+        // West Corridor
+        CeilingLightFixture {
+            position: Qt.vector3d(450, 295, 3800)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(450, 295, 4600)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(450, 295, 5400)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        // North Corridor
+        CeilingLightFixture {
+            position: Qt.vector3d(3700, 295, 1200)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(4700, 295, 1200)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        // East Security Corridor
+        CeilingLightFixture {
+            position: Qt.vector3d(5500, 295, 1800)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(5500, 295, 3000)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(5500, 295, 4200)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        // Descent Approach Corridor
+        CeilingLightFixture {
+            position: Qt.vector3d(4600, 295, 5000)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+        CeilingLightFixture {
+            position: Qt.vector3d(3800, 295, 5000)
+            fixtureColor: "#FF1E1E"
+            emissiveFactor: Qt.vector3d(1.0, 0.08, 0.08)
+            pointLightColor: "#FF2A2A"
+        }
+
+        // --- Standard Room Cool-White / Ice-Blue Lights (#D8E8FF) ---
+        // Spawn / The Cache
+        CeilingLightFixture {
+            position: Qt.vector3d(1050, 295, 6050)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // West Arsenal / Proving Grounds
+        CeilingLightFixture {
+            position: Qt.vector3d(1250, 295, 2400)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Central Armory Vault
+        CeilingLightFixture {
+            position: Qt.vector3d(2850, 295, 2800)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Explosives Depot
+        CeilingLightFixture {
+            position: Qt.vector3d(4950, 295, 1700)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
+        // Descent Shaft Antechamber
+        CeilingLightFixture {
+            position: Qt.vector3d(3400, 295, 4900)
+            fixtureColor: "#D8E8FF"
+            emissiveFactor: Qt.vector3d(0.85, 0.92, 1.0)
+            pointLightColor: "#D8E8FF"
+            lightBrightness: 4.0
+        }
     }
 }

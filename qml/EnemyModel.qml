@@ -30,34 +30,96 @@ Node {
     property real rotorAngle: 0
     readonly property real forwardBank: (enemyObj && enemyObj.isAttacking) ? -12 : ((enemyObj && enemyObj.stateString === "CHASE") ? -7 : 0)
 
-    // Dedicated High-Resolution Terminator Mech Textures
+    // Dedicated Nearest-Filtered Enemy Textures & Dark Facility Metallic Materials
+    Texture {
+        id: texDronePanel
+        source: "../assets/textures/drone_panel.png"
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
+    }
     Texture {
         id: texSentinelHead
         source: "../assets/textures/sentinel_head.png"
-        magFilter: Texture.Linear
-        minFilter: Texture.Linear
-        generateMipmaps: true
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
     }
     Texture {
         id: texSentinelArmor
         source: "../assets/textures/sentinel_armor.png"
-        magFilter: Texture.Linear
-        minFilter: Texture.Linear
-        generateMipmaps: true
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
     }
     Texture {
         id: texSentinelCore
         source: "../assets/textures/sentinel_core.png"
-        magFilter: Texture.Linear
-        minFilter: Texture.Linear
-        generateMipmaps: true
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
     }
     Texture {
         id: texSentinelGun
         source: "../assets/textures/sentinel_gun.png"
-        magFilter: Texture.Linear
-        minFilter: Texture.Linear
-        generateMipmaps: true
+        magFilter: Texture.Nearest
+        minFilter: Texture.Nearest
+        generateMipmaps: false
+    }
+
+    // ==================== REUSABLE PRINCIPLED MATERIALS ====================
+    // Drone Brushed Gunmetal Chassis (#23272E, metalness: 0.8, roughness: 0.3)
+    PrincipledMaterial {
+        id: matDroneChassis
+        baseColorMap: texDronePanel
+        baseColor: "#23272E"
+        metalness: 0.80
+        roughness: 0.30
+    }
+
+    // Dark Recessed Mechanical Joint Material (#2D3748)
+    PrincipledMaterial {
+        id: matDarkMechJoint
+        baseColor: "#2D3748"
+        metalness: 0.65
+        roughness: 0.35
+    }
+
+    // High-Visibility Tactical Titanium Sentinel Armor Plating
+    PrincipledMaterial {
+        id: matSentinelHead
+        baseColorMap: texSentinelHead
+        baseColor: "#E2E8F0"
+        metalness: 0.55
+        roughness: 0.35
+        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+    }
+
+    PrincipledMaterial {
+        id: matSentinelArmor
+        baseColorMap: texSentinelArmor
+        baseColor: "#E2E8F0"
+        metalness: 0.55
+        roughness: 0.35
+        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+    }
+
+    PrincipledMaterial {
+        id: matSentinelCore
+        baseColorMap: texSentinelCore
+        baseColor: "#CBD5E1"
+        metalness: 0.55
+        roughness: 0.35
+        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+    }
+
+    PrincipledMaterial {
+        id: matSentinelGun
+        baseColorMap: texSentinelGun
+        baseColor: "#E2E8F0"
+        metalness: 0.55
+        roughness: 0.35
+        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
     }
 
     // Terminator Bipedal Mech Walk & Stance Animations
@@ -184,453 +246,648 @@ Node {
             position: Qt.vector3d(0, 95 + root.hoverBob, 0)
             eulerRotation: Qt.vector3d(root.forwardBank + root.hoverTilt, 0, root.hoverTilt * 0.7)
 
-            // 1. Central Aerodynamic Fuselage Pod (Sleek angular hull)
+            // 1. Central Fuselage Pod (Dark brushed gunmetal with metallic panel texture)
             Model {
                 source: "#Cube"
                 scale: Qt.vector3d(0.55, 0.32, 0.65)
                 position: Qt.vector3d(0, 0, 0)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#1e293b" // Deep dark slate composite
-                    metalness: 0.8
-                    roughness: 0.35
-                }]
+                materials: [ matDroneChassis ]
             }
 
-            // 2. Upper Armored Cowling / Shield Crest (Variant accent color)
+            // 2. Upper Armored Cowling / Crest (Dark gunmetal with variant accent)
             Model {
                 source: "#Cube"
                 scale: Qt.vector3d(0.42, 0.16, 0.52)
                 position: Qt.vector3d(0, 14, -2)
                 materials: [ PrincipledMaterial {
-                    // Shock Drone: Electric Cyan/Blue; Ranged Drone: Crimson Red
-                    baseColor: !droneNode.isShooter ? "#0284c7" : (droneNode.isAttacking ? "#ff3333" : "#dc2626")
-                    metalness: 0.6
-                    roughness: 0.4
+                    baseColorMap: texDronePanel
+                    baseColor: droneNode.isShooter ? (droneNode.isAttacking ? "#4A1818" : "#2A1F22") : (droneNode.isAttacking ? "#18384A" : "#1B2734")
+                    metalness: 0.80
+                    roughness: 0.30
                 }]
             }
 
-            // 3. Central Sensor Visor / Optical Camera Eye (Glowing Front Sensor)
+            // 3. Narrow Glowing Optical Visor Slit
+            // Ranged Drones: glowing crimson (#FF1E1E); Close-Shock Drones: glowing electric-cyan (#00E5FF)
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.36, 0.12, 0.1)
+                scale: Qt.vector3d(0.32, 0.045, 0.08)
                 position: Qt.vector3d(0, 2, 33)
                 materials: [ PrincipledMaterial {
-                    baseColor: !droneNode.isShooter ? "#00f0ff" : "#ff1122"
+                    baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
                     lighting: PrincipledMaterial.NoLighting
+                    emissiveFactor: Qt.vector3d(1.0, 1.0, 1.0)
                 }]
             }
-
-            // 4. Rear Power Generator Vent / Thruster Grille
+            // Recessed Visor Housing Bevel
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.28, 0.14, 0.08)
+                scale: Qt.vector3d(0.36, 0.09, 0.04)
+                position: Qt.vector3d(0, 2, 32.5)
+                materials: [ matDarkMechJoint ]
+            }
+
+            // 4. Rear Power Generator Vent / Thruster Slit
+            Model {
+                source: "#Cube"
+                scale: Qt.vector3d(0.24, 0.06, 0.05)
                 position: Qt.vector3d(0, 2, -33)
                 materials: [ PrincipledMaterial {
-                    baseColor: !droneNode.isShooter ? "#38bdf8" : "#f59e0b"
+                    baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
                     lighting: PrincipledMaterial.NoLighting
                 }]
             }
 
-            // 5. Underbelly Anti-Gravity Repulsor Thruster
+            // 5. Underbelly Anti-Gravity Repulsor Plate
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.26, 0.1, 0.26)
-                position: Qt.vector3d(0, -18, 0)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#0f172a"
-                    metalness: 0.9
-                    roughness: 0.2
-                }]
-            }
-            // Plasma Ion Thrust Flame beneath repulsor
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.16, 0.25, 0.16)
-                position: Qt.vector3d(0, -28, 0)
-                materials: [ PrincipledMaterial {
-                    baseColor: !droneNode.isShooter ? "#00e5ff" : "#ff4400"
-                    lighting: PrincipledMaterial.NoLighting
-                }]
+                scale: Qt.vector3d(0.28, 0.08, 0.28)
+                position: Qt.vector3d(0, -17, 0)
+                materials: [ matDarkMechJoint ]
             }
 
-            // 6. Quadcopter Outrigger Rotor Pylons (4 Diagonal Boom Arms)
-            // Front-Left Arm
+            // 6. Quadcopter Outrigger Rotor Pylons (4 Diagonal Boom Arms Angled Slightly Upward)
+            // Front-Left Arm (pitched upward by 10 deg)
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.1, 0.08, 0.48)
-                position: Qt.vector3d(-24, 6, 20)
-                eulerRotation: Qt.vector3d(0, -42, 0)
-                materials: [ PrincipledMaterial { baseColor: "#111827"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.10, 0.08, 0.50)
+                position: Qt.vector3d(-24, 9, 20)
+                eulerRotation: Qt.vector3d(-10, -42, 8)
+                materials: [ matDarkMechJoint ]
             }
-            // Front-Right Arm
+            // Front-Right Arm (pitched upward by 10 deg)
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.1, 0.08, 0.48)
-                position: Qt.vector3d(24, 6, 20)
-                eulerRotation: Qt.vector3d(0, 42, 0)
-                materials: [ PrincipledMaterial { baseColor: "#111827"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.10, 0.08, 0.50)
+                position: Qt.vector3d(24, 9, 20)
+                eulerRotation: Qt.vector3d(-10, 42, -8)
+                materials: [ matDarkMechJoint ]
             }
-            // Rear-Left Arm
+            // Rear-Left Arm (pitched upward by 10 deg)
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.1, 0.08, 0.48)
-                position: Qt.vector3d(-24, 6, -20)
-                eulerRotation: Qt.vector3d(0, -138, 0)
-                materials: [ PrincipledMaterial { baseColor: "#111827"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.10, 0.08, 0.50)
+                position: Qt.vector3d(-24, 9, -20)
+                eulerRotation: Qt.vector3d(10, -138, 8)
+                materials: [ matDarkMechJoint ]
             }
-            // Rear-Right Arm
+            // Rear-Right Arm (pitched upward by 10 deg)
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.1, 0.08, 0.48)
-                position: Qt.vector3d(24, 6, -20)
-                eulerRotation: Qt.vector3d(0, 138, 0)
-                materials: [ PrincipledMaterial { baseColor: "#111827"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.10, 0.08, 0.50)
+                position: Qt.vector3d(24, 9, -20)
+                eulerRotation: Qt.vector3d(10, 138, -8)
+                materials: [ matDarkMechJoint ]
             }
 
-            // 7. Four Rotor Nacelles & High-Speed Spinning Propellers
-            // Nacelle 1: Front-Left (-40, 10, 36)
+            // 7. Four Rotor Nacelles with Thin Dark Rotor Guard Frames & Rotor-Tip LEDs
+            // Nacelle 1: Front-Left (-40, 16, 36)
             Node {
-                position: Qt.vector3d(-40, 10, 36)
+                position: Qt.vector3d(-40, 16, 36)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.2, 0.08, 0.2)
-                    materials: [ PrincipledMaterial { baseColor: "#334155" } ]
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
+                    materials: [ matDroneChassis ]
                 }
+                // Rotor Guard Frame (Thin dark perimeter frame around spinning blades)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, 25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, -25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(-25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                // Rotor-Tip LED Marker (Red on Shooter, Electric-Cyan on Shock)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.05, 0.04, 0.05)
+                    position: Qt.vector3d(-25, 6, 25)
+                    materials: [ PrincipledMaterial {
+                        baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Spinning Blades
                 Node {
                     eulerRotation.y: root.rotorAngle
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.48, 0.02, 0.07)
+                        scale: Qt.vector3d(0.46, 0.02, 0.06)
                         position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
                     }
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.07, 0.02, 0.48)
+                        scale: Qt.vector3d(0.06, 0.02, 0.46)
                         position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                }
-            }
-            // Nacelle 2: Front-Right (40, 10, 36)
-            Node {
-                position: Qt.vector3d(40, 10, 36)
-                Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.2, 0.08, 0.2)
-                    materials: [ PrincipledMaterial { baseColor: "#334155" } ]
-                }
-                Node {
-                    eulerRotation.y: -root.rotorAngle
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.48, 0.02, 0.07)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.07, 0.02, 0.48)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                }
-            }
-            // Nacelle 3: Rear-Left (-40, 10, -36)
-            Node {
-                position: Qt.vector3d(-40, 10, -36)
-                Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.2, 0.08, 0.2)
-                    materials: [ PrincipledMaterial { baseColor: "#334155" } ]
-                }
-                Node {
-                    eulerRotation.y: -root.rotorAngle
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.48, 0.02, 0.07)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.07, 0.02, 0.48)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                }
-            }
-            // Nacelle 4: Rear-Right (40, 10, -36)
-            Node {
-                position: Qt.vector3d(40, 10, -36)
-                Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.2, 0.08, 0.2)
-                    materials: [ PrincipledMaterial { baseColor: "#334155" } ]
-                }
-                Node {
-                    eulerRotation.y: root.rotorAngle
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.48, 0.02, 0.07)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
-                    }
-                    Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.07, 0.02, 0.48)
-                        position: Qt.vector3d(0, 5, 0)
-                        materials: [ PrincipledMaterial { baseColor: "#94a3b8"; metalness: 0.8 } ]
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
                     }
                 }
             }
 
-            // 8. Weapon Variant A: SHOOTER DRONE (Dual Underslung Repeating Blasters)
+            // Nacelle 2: Front-Right (40, 16, 36)
+            Node {
+                position: Qt.vector3d(40, 16, 36)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
+                    materials: [ matDroneChassis ]
+                }
+                // Guard Frame
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, 25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, -25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(-25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                // LED Marker
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.05, 0.04, 0.05)
+                    position: Qt.vector3d(25, 6, 25)
+                    materials: [ PrincipledMaterial {
+                        baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Counter-Spinning Blades
+                Node {
+                    eulerRotation.y: -root.rotorAngle
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.46, 0.02, 0.06)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.06, 0.02, 0.46)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                }
+            }
+
+            // Nacelle 3: Rear-Left (-40, 16, -36)
+            Node {
+                position: Qt.vector3d(-40, 16, -36)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
+                    materials: [ matDroneChassis ]
+                }
+                // Guard Frame
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, 25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, -25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(-25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                // LED Marker
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.05, 0.04, 0.05)
+                    position: Qt.vector3d(-25, 6, -25)
+                    materials: [ PrincipledMaterial {
+                        baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Counter-Spinning Blades
+                Node {
+                    eulerRotation.y: -root.rotorAngle
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.46, 0.02, 0.06)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.06, 0.02, 0.46)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                }
+            }
+
+            // Nacelle 4: Rear-Right (40, 16, -36)
+            Node {
+                position: Qt.vector3d(40, 16, -36)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
+                    materials: [ matDroneChassis ]
+                }
+                // Guard Frame
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, 25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.52, 0.025, 0.03)
+                    position: Qt.vector3d(0, 5, -25)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(-25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.03, 0.025, 0.52)
+                    position: Qt.vector3d(25, 5, 0)
+                    materials: [ matDarkMechJoint ]
+                }
+                // LED Marker
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.05, 0.04, 0.05)
+                    position: Qt.vector3d(25, 6, -25)
+                    materials: [ PrincipledMaterial {
+                        baseColor: droneNode.isShooter ? "#FF1E1E" : "#00E5FF"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Spinning Blades
+                Node {
+                    eulerRotation.y: root.rotorAngle
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.46, 0.02, 0.06)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.06, 0.02, 0.46)
+                        position: Qt.vector3d(0, 5, 0)
+                        materials: [ PrincipledMaterial { baseColor: "#718096"; metalness: 0.85; roughness: 0.25 } ]
+                    }
+                }
+            }
+
+            // 8. Weapon Variant A: RED RANGED DRONE (Sleek Under-Slung Dual-Barrel Blaster)
             Node {
                 visible: droneNode.isShooter
 
-                // Left Blaster Cannon
+                // Under-slung Blaster Mounting Bracket
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.08, 0.08, 0.42)
-                    position: Qt.vector3d(-18, -12, 24)
-                    materials: [ PrincipledMaterial { baseColor: "#0f172a"; metalness: 0.9; roughness: 0.2 } ]
-                }
-                // Left Cannon Energy Coil
-                Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.1, 0.1, 0.12)
-                    position: Qt.vector3d(-18, -12, 18)
-                    materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
+                    scale: Qt.vector3d(0.24, 0.10, 0.38)
+                    position: Qt.vector3d(0, -9, 12)
+                    materials: [ matDroneChassis ]
                 }
 
-                // Right Blaster Cannon
+                // Left Heavy Blaster Barrel
                 Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.08, 0.08, 0.42)
-                    position: Qt.vector3d(18, -12, 24)
-                    materials: [ PrincipledMaterial { baseColor: "#0f172a"; metalness: 0.9; roughness: 0.2 } ]
+                    source: "#Cylinder"
+                    eulerRotation: Qt.vector3d(90, 0, 0)
+                    scale: Qt.vector3d(0.04, 0.32, 0.04)
+                    position: Qt.vector3d(-10, -10, 28)
+                    materials: [ PrincipledMaterial { baseColor: "#151920"; metalness: 0.90; roughness: 0.20 } ]
                 }
-                // Right Cannon Energy Coil
+                // Left Crimson Energy Coil
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.1, 0.1, 0.12)
-                    position: Qt.vector3d(18, -12, 18)
-                    materials: [ PrincipledMaterial { baseColor: "#00e5ff"; lighting: PrincipledMaterial.NoLighting } ]
+                    scale: Qt.vector3d(0.06, 0.06, 0.12)
+                    position: Qt.vector3d(-10, -10, 20)
+                    materials: [ PrincipledMaterial { baseColor: "#FF1E1E"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                // Left Muzzle Compensator
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.055, 0.055, 0.06)
+                    position: Qt.vector3d(-10, -10, 44)
+                    materials: [ matDarkMechJoint ]
+                }
+
+                // Right Heavy Blaster Barrel
+                Model {
+                    source: "#Cylinder"
+                    eulerRotation: Qt.vector3d(90, 0, 0)
+                    scale: Qt.vector3d(0.04, 0.32, 0.04)
+                    position: Qt.vector3d(10, -10, 28)
+                    materials: [ PrincipledMaterial { baseColor: "#151920"; metalness: 0.90; roughness: 0.20 } ]
+                }
+                // Right Crimson Energy Coil
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.06, 0.06, 0.12)
+                    position: Qt.vector3d(10, -10, 20)
+                    materials: [ PrincipledMaterial { baseColor: "#FF1E1E"; lighting: PrincipledMaterial.NoLighting } ]
+                }
+                // Right Muzzle Compensator
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.055, 0.055, 0.06)
+                    position: Qt.vector3d(10, -10, 44)
+                    materials: [ matDarkMechJoint ]
                 }
 
                 // Dual Muzzle Flash (Flashes when firing)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.14, 0.14, 0.14)
-                    position: Qt.vector3d(-18, -12, 47)
+                    scale: Qt.vector3d(0.12, 0.12, 0.12)
+                    position: Qt.vector3d(-10, -10, 48)
                     visible: droneNode.isShooting
-                    materials: [ PrincipledMaterial { baseColor: "#00f0ff"; lighting: PrincipledMaterial.NoLighting } ]
+                    materials: [ PrincipledMaterial { baseColor: "#FF3333"; lighting: PrincipledMaterial.NoLighting } ]
                 }
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.14, 0.14, 0.14)
-                    position: Qt.vector3d(18, -12, 47)
+                    scale: Qt.vector3d(0.12, 0.12, 0.12)
+                    position: Qt.vector3d(10, -10, 48)
                     visible: droneNode.isShooting
-                    materials: [ PrincipledMaterial { baseColor: "#00f0ff"; lighting: PrincipledMaterial.NoLighting } ]
+                    materials: [ PrincipledMaterial { baseColor: "#FF3333"; lighting: PrincipledMaterial.NoLighting } ]
                 }
             }
 
-            // 9. Weapon Variant B: MELEE RAMMER DRONE (Reinforced Ramming Nose & Shock Prongs)
+            // 9. Weapon Variant B: BLUE CLOSE-SHOCK DRONE (Twin Electric Shock Prongs)
             Node {
                 visible: !droneNode.isShooter
 
-                // Heavy Ramming Prow Nose
+                // Shock Electrode Mounting Yoke
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.32, 0.2, 0.22)
-                    position: Qt.vector3d(0, -6, 32)
-                    materials: [ PrincipledMaterial {
-                        baseColor: droneNode.isAttacking ? "#ff4444" : "#7f1d1d"
-                        metalness: 0.8
-                        roughness: 0.3
-                    }]
+                    scale: Qt.vector3d(0.30, 0.12, 0.26)
+                    position: Qt.vector3d(0, -8, 14)
+                    materials: [ matDroneChassis ]
                 }
 
-                // Left High-Voltage Shock Blade Prong
+                // Left Shock Prong Blade
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.06, 0.14, 0.35)
-                    position: Qt.vector3d(-16, -4, 42)
-                    materials: [ PrincipledMaterial {
-                        baseColor: "#e2e8f0"
-                        metalness: 0.9
-                        roughness: 0.1
-                    }]
+                    scale: Qt.vector3d(0.05, 0.07, 0.36)
+                    position: Qt.vector3d(-14, -6, 32)
+                    materials: [ matDarkMechJoint ]
                 }
-                // Left Shock Blade Arc Tip
+                // Left Glowing Electric-Cyan Arc-Prong Tip (#00E5FF)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.08, 0.16, 0.1)
-                    position: Qt.vector3d(-16, -4, 57)
+                    scale: Qt.vector3d(0.06, 0.08, 0.12)
+                    position: Qt.vector3d(-14, -6, 50)
                     materials: [ PrincipledMaterial {
-                        baseColor: "#ffaa00"
+                        baseColor: "#00E5FF"
                         lighting: PrincipledMaterial.NoLighting
                     }]
                 }
 
-                // Right High-Voltage Shock Blade Prong
+                // Right Shock Prong Blade
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.06, 0.14, 0.35)
-                    position: Qt.vector3d(16, -4, 42)
+                    scale: Qt.vector3d(0.05, 0.07, 0.36)
+                    position: Qt.vector3d(14, -6, 32)
+                    materials: [ matDarkMechJoint ]
+                }
+                // Right Glowing Electric-Cyan Arc-Prong Tip (#00E5FF)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.06, 0.08, 0.12)
+                    position: Qt.vector3d(14, -6, 50)
                     materials: [ PrincipledMaterial {
-                        baseColor: "#e2e8f0"
-                        metalness: 0.9
-                        roughness: 0.1
+                        baseColor: "#00E5FF"
+                        lighting: PrincipledMaterial.NoLighting
                     }]
                 }
-                // Right Shock Blade Arc Tip
+
+                // Central High-Voltage Arc Discharge Crossbar
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.08, 0.16, 0.1)
-                    position: Qt.vector3d(16, -4, 57)
+                    scale: Qt.vector3d(0.24, 0.03, 0.03)
+                    position: Qt.vector3d(0, -6, 36)
                     materials: [ PrincipledMaterial {
-                        baseColor: "#ffaa00"
+                        baseColor: "#00E5FF"
                         lighting: PrincipledMaterial.NoLighting
                     }]
                 }
             }
         }
 
-        // ==================== SENTINEL MODEL (Terminator Combat Gunner Mech) ====================
+        // ==================== SENTINEL MODEL (Heavy Dark Titanium Combat Mech) ====================
         Node {
             id: sentinelNode
             visible: !root.isDrone
             position: Qt.vector3d(0, root.torsoBob, 0)
 
+            // --- 0. Recessed Mechanical Neck Joint (#111317) ---
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.18, 0.16, 0.18)
+                position: Qt.vector3d(0, 134, 0)
+                materials: [ matDarkMechJoint ]
+            }
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.04, 0.16, 0.04)
+                position: Qt.vector3d(-10, 134, 0)
+                materials: [ matDarkMechJoint ]
+            }
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.04, 0.16, 0.04)
+                position: Qt.vector3d(10, 134, 0)
+                materials: [ matDarkMechJoint ]
+            }
+
             // --- 1. Cybernetic Skull / Head ---
             Node {
                 position: Qt.vector3d(0, 155, 0)
 
-                // Armored Skull Faceplate (Bright silver titanium alloy)
+                // Armored Skull Faceplate (Heavy dark titanium alloy #2D3748)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.50, 0.48, 0.48)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelHead
-                        metalness: 0.30
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
-                    }]
+                    materials: [ matSentinelHead ]
                 }
-                // Glowing Ruby Ocular Visor / Sensor Strip
+
+                // Dark Recessed Visor Socket (#111317)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.44, 0.14, 0.14)
-                    position: Qt.vector3d(0, 1, 24)
+                    scale: Qt.vector3d(0.44, 0.10, 0.08)
+                    position: Qt.vector3d(0, 1, 23.5)
+                    materials: [ matDarkMechJoint ]
+                }
+
+                // Narrow Menacing Glowing Red Optical Slit (#FF1E1E)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.42, 0.06, 0.08)
+                    position: Qt.vector3d(0, 1, 25)
                     materials: [ PrincipledMaterial {
-                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff0033" : "#ff2244"
+                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#FF0033" : "#FF1E1E"
                         lighting: PrincipledMaterial.NoLighting
                     }]
                 }
-                // Temple Hydraulic Armor Plates (Left & Right - Light silver alloy)
+
+                // Temple Hydraulic Armor Plates (Left & Right - Heavy dark titanium #2D3748)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.08, 0.32, 0.35)
                     position: Qt.vector3d(-26, -2, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.08, 0.32, 0.35)
                     position: Qt.vector3d(26, -2, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
             }
 
-            // --- 2. Heavy Armored Torso & Core Reactor ---
+            // --- 2. Heavy Armored Torso & Recessed Reactor Core ---
             Node {
                 position: Qt.vector3d(0, 105, 0)
 
-                // Upper Chest Ballistic Carapace (Bright polished titanium plates)
+                // Upper Chest Ballistic Carapace (Heavy dark titanium plates #2D3748)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.75, 0.52, 0.44)
                     position: Qt.vector3d(0, 8, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.32
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Core Plasma Reactor Housing
+
+                // Recessed Reactor Core Housing Cavity (#111317)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.42, 0.42, 0.46)
-                    position: Qt.vector3d(0, 6, 2)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelCore
-                        metalness: 0.30
-                        roughness: 0.42
-                        emissiveFactor: Qt.vector3d(0.14, 0.12, 0.12)
-                    }]
+                    scale: Qt.vector3d(0.38, 0.38, 0.20)
+                    position: Qt.vector3d(0, 8, 4)
+                    materials: [ matDarkMechJoint ]
                 }
-                // Glowing Reactor Exhaust Vent (Glows brighter when attacking)
+
+                // Recessed Glowing Plasma Reactor Core (#FF1E1E)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.18, 0.18, 0.08)
-                    position: Qt.vector3d(0, 6, 25)
+                    scale: Qt.vector3d(0.26, 0.26, 0.12)
+                    position: Qt.vector3d(0, 8, 14)
                     materials: [ PrincipledMaterial {
-                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff2200" : "#ff7700"
+                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#FF0033" : "#FF2200"
                         lighting: PrincipledMaterial.NoLighting
                     }]
                 }
+
+                // Dark Armored Protective Ribs across Reactor Core (#111317)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.36, 0.035, 0.06)
+                    position: Qt.vector3d(0, 15, 23)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.36, 0.035, 0.06)
+                    position: Qt.vector3d(0, 8, 23)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.36, 0.035, 0.06)
+                    position: Qt.vector3d(0, 1, 23)
+                    materials: [ matDarkMechJoint ]
+                }
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.04, 0.32, 0.07)
+                    position: Qt.vector3d(0, 8, 23.5)
+                    materials: [ matDarkMechJoint ]
+                }
+
                 // Abdominal Spinal Vertebrae & Power Conduits
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.42, 0.32, 0.32)
                     position: Qt.vector3d(0, -28, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelCore
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelCore ]
                 }
 
-                // Left Heavy Shoulder Pauldron
+                // Widened Heavy Shoulder Pauldrons (Heavier tactical silhouette)
+                // Left Heavy Shoulder Pauldron (displays hazard markings from texture)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.32, 0.22, 0.45)
-                    position: Qt.vector3d(-46, 25, 0)
-                    eulerRotation: Qt.vector3d(0, 0, 15)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
-                    }]
+                    scale: Qt.vector3d(0.38, 0.26, 0.50)
+                    position: Qt.vector3d(-50, 26, 0)
+                    eulerRotation: Qt.vector3d(0, 0, 18)
+                    materials: [ matSentinelArmor ]
                 }
-                // Right Heavy Shoulder Pauldron
+                // Right Heavy Shoulder Pauldron (displays hazard markings from texture)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.32, 0.22, 0.45)
-                    position: Qt.vector3d(46, 25, 0)
-                    eulerRotation: Qt.vector3d(0, 0, -15)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
-                    }]
+                    scale: Qt.vector3d(0.38, 0.26, 0.50)
+                    position: Qt.vector3d(50, 26, 0)
+                    eulerRotation: Qt.vector3d(0, 0, -18)
+                    materials: [ matSentinelArmor ]
                 }
+            }
+
+            // --- Recessed Mechanical Shoulder Joints (#111317) ---
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.16, 0.16, 0.16)
+                position: Qt.vector3d(-44, 114, 0)
+                materials: [ matDarkMechJoint ]
+            }
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.16, 0.16, 0.16)
+                position: Qt.vector3d(44, 114, 0)
+                materials: [ matDarkMechJoint ]
             }
 
             // --- 3. Left Arm (Tactical Stabilizer & Combat Claw) ---
@@ -643,43 +900,36 @@ Node {
                     source: "#Cube"
                     scale: Qt.vector3d(0.20, 0.40, 0.20)
                     position: Qt.vector3d(0, -18, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Elbow Servo Joint (Light titanium joint)
+
+                // Recessed Mechanical Elbow Servo Joint (#111317)
                 Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.18, 0.12, 0.18)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.16, 0.12, 0.16)
                     position: Qt.vector3d(0, -38, 0)
-                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                    materials: [ matDarkMechJoint ]
                 }
+
                 // Armored Forearm
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.18, 0.38, 0.18)
                     position: Qt.vector3d(0, -56, 4)
                     eulerRotation: Qt.vector3d(-15, 0, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Tactical Combat Claw (Bright chrome finish)
+
+                // Tactical Combat Claw (Dark Gunmetal)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.14, 0.16, 0.20)
                     position: Qt.vector3d(0, -74, 8)
-                    materials: [ PrincipledMaterial { baseColor: "#8b9cb0"; metalness: 0.50; roughness: 0.30 }]
+                    materials: [ matDarkMechJoint ]
                 }
             }
 
-            // --- 4. Right Arm with Heavy Plasma Assault Cannon ---
+            // --- 4. Right Arm with Heavy Gunmetal Assault Cannon ---
             Node {
                 position: Qt.vector3d(48, 110, 0)
                 eulerRotation: Qt.vector3d(-65 - (root.enemyObj && root.enemyObj.isShooting ? 12 : 0), -5, -8)
@@ -689,107 +939,119 @@ Node {
                     source: "#Cube"
                     scale: Qt.vector3d(0.20, 0.40, 0.20)
                     position: Qt.vector3d(0, -18, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Elbow Servo
+
+                // Recessed Mechanical Elbow Servo Joint (#111317)
                 Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.18, 0.12, 0.18)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.16, 0.12, 0.16)
                     position: Qt.vector3d(0, -38, 0)
-                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                    materials: [ matDarkMechJoint ]
                 }
+
                 // Armored Forearm
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.20, 0.38, 0.20)
                     position: Qt.vector3d(0, -56, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
 
-                // Heavy Plasma Assault Cannon
+                // Heavy Gunmetal Assault Cannon Assembly
                 Node {
                     position: Qt.vector3d(2, -64, 16)
 
-                    // Cannon Receiver & Frame (Bright silver/titanium)
+                    // Cannon Receiver & Frame (Heavy dark gunmetal)
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.22, 0.28, 0.75)
+                        scale: Qt.vector3d(0.24, 0.30, 0.72)
                         position: Qt.vector3d(0, 0, 10)
-                        materials: [ PrincipledMaterial {
-                            baseColorMap: texSentinelGun
-                            metalness: 0.35
-                            roughness: 0.38
-                            emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                        }]
+                        materials: [ matSentinelGun ]
                     }
-                    // Glowing Plasma Energy Coils (Top Chamber)
+                    // Picatinny Tactical Top Rail
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.14, 0.12, 0.32)
-                        position: Qt.vector3d(0, 14, 6)
+                        scale: Qt.vector3d(0.12, 0.06, 0.55)
+                        position: Qt.vector3d(0, 16, 8)
+                        materials: [ matDarkMechJoint ]
+                    }
+                    // Glowing Crimson Plasma Energy Coils (#FF1E1E)
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.14, 0.08, 0.30)
+                        position: Qt.vector3d(0, 12, 6)
                         materials: [ PrincipledMaterial {
-                            baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff3300" : "#ff7700"
+                            baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#FF0033" : "#FF1E1E"
                             lighting: PrincipledMaterial.NoLighting
                         }]
                     }
-                    // Heavy Heat-Dissipation Barrel
+                    // Heavy Heat-Dissipation Fluted Cannon Barrel
                     Model {
-                        source: "#Cube"
-                        scale: Qt.vector3d(0.14, 0.14, 0.55)
+                        source: "#Cylinder"
+                        eulerRotation: Qt.vector3d(90, 0, 0)
+                        scale: Qt.vector3d(0.10, 0.45, 0.10)
                         position: Qt.vector3d(0, 0, 48)
-                        materials: [ PrincipledMaterial {
-                            baseColor: "#627284"
-                            metalness: 0.50
-                            roughness: 0.30
-                        }]
+                        materials: [ matDarkMechJoint ]
                     }
-                    // Muzzle Shroud / Flash Compensator
+                    // Muzzle Shroud / Heavy Compensator
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.18, 0.18, 0.15)
+                        scale: Qt.vector3d(0.16, 0.16, 0.14)
                         position: Qt.vector3d(0, 0, 72)
+                        materials: [ matSentinelGun ]
+                    }
+                    // Glowing Crimson Emissive Muzzle Accent (#FF1E1E)
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.12, 0.12, 0.03)
+                        position: Qt.vector3d(0, 0, 79)
                         materials: [ PrincipledMaterial {
-                            baseColor: "#718296"
-                            metalness: 0.45
-                            roughness: 0.35
+                            baseColor: "#FF1E1E"
+                            lighting: PrincipledMaterial.NoLighting
                         }]
                     }
                     // High-Energy Muzzle Flash
                     Model {
                         source: "#Cube"
-                        scale: Qt.vector3d(0.22, 0.22, 0.22)
-                        position: Qt.vector3d(0, 0, 84)
+                        scale: Qt.vector3d(0.24, 0.24, 0.24)
+                        position: Qt.vector3d(0, 0, 88)
                         visible: root.enemyObj ? root.enemyObj.isShooting : false
                         materials: [ PrincipledMaterial {
-                            baseColor: "#ffaa00"
+                            baseColor: "#FFAA00"
                             lighting: PrincipledMaterial.NoLighting
                         }]
                     }
                 }
             }
 
+            // --- Recessed Mechanical Waist Joint & Hydraulic Actuators (#111317) ---
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.24, 0.16, 0.24)
+                position: Qt.vector3d(0, 78, 0)
+                materials: [ matDarkMechJoint ]
+            }
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.05, 0.16, 0.05)
+                position: Qt.vector3d(-14, 78, 0)
+                materials: [ matDarkMechJoint ]
+            }
+            Model {
+                source: "#Cylinder"
+                scale: Qt.vector3d(0.05, 0.16, 0.05)
+                position: Qt.vector3d(14, 78, 0)
+                materials: [ matDarkMechJoint ]
+            }
+
             // --- 5. Armored Pelvis & Bipedal Legs ---
-            // Pelvis
+            // Armored Pelvis (Heavy dark titanium)
             Model {
                 source: "#Cube"
                 scale: Qt.vector3d(0.58, 0.20, 0.36)
                 position: Qt.vector3d(0, 62, 0)
-                materials: [ PrincipledMaterial {
-                    baseColorMap: texSentinelArmor
-                    metalness: 0.35
-                    roughness: 0.38
-                    emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                }]
+                materials: [ matSentinelArmor ]
             }
 
             // Left Leg (Swings with sentinelWalkPhase)
@@ -802,38 +1064,28 @@ Node {
                     source: "#Cube"
                     scale: Qt.vector3d(0.24, 0.35, 0.24)
                     position: Qt.vector3d(0, -16, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Knee Hydraulic Actuator
+                // Recessed Mechanical Knee Joint (#111317)
                 Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.20, 0.10, 0.22)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
                     position: Qt.vector3d(0, -32, 2)
-                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                    materials: [ matDarkMechJoint ]
                 }
                 // Armored Shin & Calf Plate
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.22, 0.34, 0.22)
                     position: Qt.vector3d(0, -48, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Magnetic Heavy Combat Boot (Bright titanium alloy)
+                // Magnetic Heavy Combat Boot (Dark Gunmetal)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.26, 0.12, 0.36)
                     position: Qt.vector3d(0, -66, 6)
-                    materials: [ PrincipledMaterial { baseColor: "#6b7c93"; metalness: 0.45; roughness: 0.35 }]
+                    materials: [ matDarkMechJoint ]
                 }
             }
 
@@ -847,38 +1099,28 @@ Node {
                     source: "#Cube"
                     scale: Qt.vector3d(0.24, 0.35, 0.24)
                     position: Qt.vector3d(0, -16, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.40
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Knee Hydraulic Actuator
+                // Recessed Mechanical Knee Joint (#111317)
                 Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.20, 0.10, 0.22)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.18, 0.10, 0.18)
                     position: Qt.vector3d(0, -32, 2)
-                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                    materials: [ matDarkMechJoint ]
                 }
                 // Armored Shin & Calf Plate
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.22, 0.34, 0.22)
                     position: Qt.vector3d(0, -48, 0)
-                    materials: [ PrincipledMaterial {
-                        baseColorMap: texSentinelArmor
-                        metalness: 0.35
-                        roughness: 0.38
-                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
-                    }]
+                    materials: [ matSentinelArmor ]
                 }
-                // Magnetic Heavy Combat Boot (Bright titanium alloy)
+                // Magnetic Heavy Combat Boot (Dark Gunmetal)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(0.26, 0.12, 0.36)
                     position: Qt.vector3d(0, -66, 6)
-                    materials: [ PrincipledMaterial { baseColor: "#6b7c93"; metalness: 0.45; roughness: 0.35 }]
+                    materials: [ matDarkMechJoint ]
                 }
             }
         }

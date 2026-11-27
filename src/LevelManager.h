@@ -143,6 +143,7 @@ public:
     Q_INVOKABLE void updateGasEmergency(float deltaTime, Player *player = nullptr);
     Q_INVOKABLE void triggerGasLeakEmergency();
     Q_INVOKABLE void purgeGasEmergency();
+    Q_INVOKABLE void resetGasEmergency();
 
     // Level progression actions
     Q_INVOKABLE void loadLevel(int levelIndex, bool resetLevelKeys = true);

@@ -51,10 +51,14 @@ qt_add_qml_module(FPSLabGame
         qml/dark_hallway.vert
         qml/dark_surface.frag
         assets/textures/stone.png
+        assets/textures/stone_wall.png
+        assets/textures/stone_wall_alt.png
         assets/textures/door.png
         assets/textures/steel_wall.png
         assets/textures/crate.png
         assets/textures/floor_plate.png
+        assets/textures/floor_deck.png
+        assets/textures/floor_hallway.png
         assets/textures/exit_elevator.png
         assets/textures/ammo_box.png
         assets/textures/core_wall.png
@@ -70,6 +74,7 @@ qt_add_qml_module(FPSLabGame
         assets/textures/sentinel_armor.png
         assets/textures/sentinel_core.png
         assets/textures/sentinel_gun.png
+        assets/textures/drone_panel.png
         assets/sounds/gunshot.wav
         assets/sounds/plasma_shot.wav
         assets/sounds/reload.wav

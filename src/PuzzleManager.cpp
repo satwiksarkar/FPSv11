@@ -149,34 +149,8 @@ bool PuzzleManager::isBarrierBlocking(int barrierId) const
 
 bool PuzzleManager::isPositionBlockedByBarrier(float x, float z) const
 {
-    // Barrier 1: Cargo Containers blocking K1 chamber (rows 6..7, col 9)
-    if (isBarrierBlocking(1)) {
-        if (x >= 880.0f && x <= 1020.0f && z >= 580.0f && z <= 820.0f) {
-            return true;
-        }
-    }
-
-    // Barrier 2: Research Containment Field blocking K2 chamber (row 10, cols 64..65)
-    if (isBarrierBlocking(2)) {
-        if (x >= 6380.0f && x <= 6620.0f && z >= 960.0f && z <= 1140.0f) {
-            return true;
-        }
-    }
-
-    // Barrier 3: Admin Security Laser Gate blocking K3 vault (row 70, cols 12..13)
-    if (isBarrierBlocking(3)) {
-        if (x >= 1180.0f && x <= 1420.0f && z >= 6960.0f && z <= 7140.0f) {
-            return true;
-        }
-    }
-
-    // Barrier 4: Maintenance Substation Interlock Gate blocking K0 alcove (row 72, col 68)
-    if (isBarrierBlocking(4)) {
-        if (x >= 6760.0f && x <= 6940.0f && z >= 7160.0f && z <= 7340.0f) {
-            return true;
-        }
-    }
-
+    Q_UNUSED(x);
+    Q_UNUSED(z);
     return false;
 }
 

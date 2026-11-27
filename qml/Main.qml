@@ -631,6 +631,7 @@ Window {
         var lvl = (levelManager.currentLevel >= 1 && levelManager.currentLevel <= 3)
             ? levelManager.currentLevel : 1
         levelManager.resetMissionKeys(lvl)
+        levelManager.resetGasEmergency()
         if (lvl === 1) {
             puzzleManager.resetAllPuzzles()
         }
@@ -1450,6 +1451,7 @@ Window {
             cameraYaw: root.frameCameraYaw
             gasLeakActive: root.gasLeakActive
             gasLeakSector: root.gasLeakSector
+            player: player
         }
 
         // ==================== 3D BULLET TRACERS (Stage V8) ====================
