@@ -215,6 +215,12 @@ Rectangle {
                         // Crate obstacle
                         ctx.fillStyle = isExplored ? "#6b7b8c" : "#3d4b58"
                         ctx.fillRect(x, y, Math.ceil(tileW), Math.ceil(tileH))
+                    } else if (tile === 5) {
+                        // Ammo Cache
+                        ctx.fillStyle = isExplored ? "#1b2838" : "#121a24"
+                        ctx.fillRect(x, y, Math.ceil(tileW), Math.ceil(tileH))
+                        ctx.fillStyle = "#f39c12"
+                        ctx.fillRect(x + tileW * 0.25, y + tileH * 0.25, Math.max(2.5, tileW * 0.5), Math.max(2.5, tileH * 0.5))
                     } else if (tile === 4 || tile === 6 || tile === 11) {
                         // Level Exit extraction platform
                         ctx.fillStyle = "#f39c12"
@@ -300,6 +306,37 @@ Rectangle {
                         ctx.fillStyle = "#ffffff"
                         ctx.font = "bold 8px sans-serif"
                         ctx.fillText(pz.label, pzx + pzSize + 2, pzy + 3)
+                    }
+                }
+            }
+
+            // 3.2 Draw Storage Warehouse Industrial Shipping Containers (Level 1)
+            if (levelManager.currentLevel === 1) {
+                var storageContainers = [
+                    { col: 19.5, row: 8.5, w: 1.8, h: 1.2, color: "#c0392b", label: "RED" },
+                    { col: 27.5, row: 8.5, w: 1.8, h: 1.2, color: "#2980b9", label: "BLUE" },
+                    { col: 21.5, row: 11.5, w: 1.2, h: 1.2, color: "#d35400", label: "ORG" },
+                    { col: 25.5, row: 11.5, w: 1.2, h: 1.2, color: "#27ae60", label: "GRN" }
+                ]
+                for (var sc = 0; sc < storageContainers.length; ++sc) {
+                    var cont = storageContainers[sc]
+                    var cx = (cont.col - cont.w * 0.5) * tileW
+                    var cy = (cont.row - cont.h * 0.5) * tileH
+                    var cw = cont.w * tileW
+                    var ch = cont.h * tileH
+
+                    ctx.fillStyle = cont.color
+                    ctx.fillRect(cx, cy, cw, ch)
+                    ctx.strokeStyle = "#ffffff"
+                    ctx.lineWidth = 0.8
+                    ctx.strokeRect(cx, cy, cw, ch)
+
+                    if (root.isExpanded) {
+                        ctx.fillStyle = "#ffffff"
+                        ctx.font = "bold 6px sans-serif"
+                        ctx.textAlign = "center"
+                        ctx.fillText(cont.label, cx + cw * 0.5, cy + ch * 0.5 + 2)
+                        ctx.textAlign = "left"
                     }
                 }
             }

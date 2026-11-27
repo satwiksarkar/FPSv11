@@ -6,13 +6,13 @@ import FPSLabGame
 /**
  * @brief CircuitPuzzle.qml provides the Among Us / Sci-Fi wire-matching minigame
  * for the Sector K4 Electrical Switchboard in Project VANGUARD Level 1.
- * Matches reference media_1795781599172_61c11268.jpg faithfully.
+ * Faithfully matches reference image media_1795781599172_61c11268.jpg.
  */
 Rectangle {
     id: root
-    width: 680
-    height: 680
-    color: "#121519"
+    width: 660
+    height: 700
+    color: "#0f1115"
     border.color: "#38414e"
     border.width: 3
     radius: 8
@@ -30,11 +30,11 @@ Rectangle {
     readonly property var wireSymbols: ["○", "✕", "△", "☆"]
     readonly property var wireNames: ["YELLOW", "BLUE", "RED", "MAGENTA"]
 
-    // Right-side terminals order (scrambled permutation matching screenshot):
-    // Row 0: Red (2)
-    // Row 1: Blue (1)
-    // Row 2: Yellow (0)
-    // Row 3: Magenta (3)
+    // Right-side terminals order (matches screenshot exactly):
+    // Row 0: Red (index 2)
+    // Row 1: Blue (index 1)
+    // Row 2: Yellow (index 0)
+    // Row 3: Magenta (index 3)
     property var rightOrder: [2, 1, 0, 3]
 
     // Connections array: index is left terminal (0..3), value is connected right row (0..3) or -1
@@ -58,14 +58,18 @@ Rectangle {
     // Spark particles for electric zap effects
     property var sparkParticles: []
 
-    // Coordinates configuration
-    readonly property int chamberWidth: 620
-    readonly property int chamberHeight: 520
-    readonly property int leftTipX: 98
-    readonly property int rightTipX: chamberWidth - 98
+    // Coordinates configuration normalized to the 943x943 reference art
+    readonly property real normLeftTipX: 125.0 / 943.0
+    readonly property real normRightTipX: 800.0 / 943.0
+    readonly property var normLeftRowY: [190.0 / 943.0, 387.0 / 943.0, 581.0 / 943.0, 773.0 / 943.0]
+    readonly property var normRightRowY: [192.0 / 943.0, 387.0 / 943.0, 583.0 / 943.0, 773.0 / 943.0]
 
-    // Row Y positions inside the chamber
-    readonly property var rowYPositions: [80, 195, 310, 425]
+    // Normalized Indicator Tab Rectangles (top-left of each left terminal)
+    // [yStart, height] in normalized coordinates
+    readonly property real normTabX: 9.0 / 943.0
+    readonly property real normTabW: 51.0 / 943.0
+    readonly property var normTabY: [149.0 / 943.0, 345.0 / 943.0, 537.0 / 943.0, 729.0 / 943.0]
+    readonly property var normTabH: [20.0 / 943.0, 19.0 / 943.0, 21.0 / 943.0, 21.0 / 943.0]
 
     // Synchronize with puzzleManager if already solved
     Component.onCompleted: {
@@ -96,7 +100,6 @@ Rectangle {
     }
 
     function shuffleRightOrder() {
-        // Scrambled permutation matching screenshot by default: [2, 1, 0, 3]
         rightOrder = [2, 1, 0, 3]
         connections = [-1, -1, -1, -1]
         draggingWireIndex = -1
@@ -128,16 +131,16 @@ Rectangle {
 
     function addSparks(cx, cy, color) {
         let list = sparkParticles.slice()
-        for (let p = 0; p < 18; ++p) {
+        for (let p = 0; p < 22; ++p) {
             let angle = Math.random() * 2 * Math.PI
-            let speed = 40 + Math.random() * 90
+            let speed = 40 + Math.random() * 110
             list.push({
                 x: cx,
                 y: cy,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                life: 0.35,
-                maxLife: 0.35,
+                life: 0.40,
+                maxLife: 0.40,
                 color: color
             })
         }
@@ -151,7 +154,6 @@ Rectangle {
             if (root.puzzleManager && !root.puzzleManager.powerSolved) {
                 root.puzzleManager.solveWiring()
             }
-            completionSoundTimer.restart()
         }
     }
 
@@ -169,7 +171,7 @@ Rectangle {
                 if (sp.life > 0) {
                     sp.x += sp.vx * dt
                     sp.y += sp.vy * dt
-                    sp.vy += 80 * dt // subtle gravity
+                    sp.vy += 90 * dt
                     list.push(sp)
                 }
             }
@@ -178,20 +180,11 @@ Rectangle {
         }
     }
 
-    Timer {
-        id: completionSoundTimer
-        interval: 1500
-        repeat: false
-        onTriggered: {
-            // Optional delayed feedback
-        }
-    }
-
     // Outer Container Layout
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 12
+        anchors.margins: 14
+        spacing: 10
 
         // Header Bar
         RowLayout {
@@ -199,7 +192,7 @@ Rectangle {
 
             Rectangle {
                 width: 4
-                height: 36
+                height: 34
                 color: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00f0ff"
             }
 
@@ -208,12 +201,12 @@ Rectangle {
                 Text {
                     text: "SECTOR K4 // JUNCTION BOX 04-B"
                     color: (root.puzzleManager && root.puzzleManager.powerSolved) ? "#2ecc71" : "#00f0ff"
-                    font.pixelSize: 15
+                    font.pixelSize: 14
                     font.bold: true
                     font.letterSpacing: 1
                 }
                 Text {
-                    text: "ELECTRICAL REPAIR // CONNECT MATCHING CONDUCTORS [LEFT -> RIGHT]"
+                    text: "ELECTRICAL REPAIR // FIX WIRING [CONNECT MATCHING TERMINALS]"
                     color: "#95a5a6"
                     font.pixelSize: 11
                 }
@@ -223,7 +216,7 @@ Rectangle {
 
             // Status Badge
             Rectangle {
-                width: 140
+                width: 135
                 height: 28
                 color: root.isFullyConnected ? "#103820" : "#1a252f"
                 border.color: root.isFullyConnected ? "#2ecc71" : "#34495e"
@@ -250,8 +243,8 @@ Rectangle {
 
             // Close Button
             Rectangle {
-                width: 32
-                height: 32
+                width: 30
+                height: 30
                 color: closeBtnMouse.containsMouse ? "#e74c3c" : "#242a32"
                 border.color: "#4a5568"
                 border.width: 1
@@ -259,10 +252,10 @@ Rectangle {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "X"
+                    text: "✕"
                     color: "#ffffff"
                     font.bold: true
-                    font.pixelSize: 14
+                    font.pixelSize: 13
                 }
 
                 MouseArea {
@@ -279,12 +272,73 @@ Rectangle {
         Rectangle {
             id: chamber
             Layout.fillWidth: true
-            Layout.preferredHeight: root.chamberHeight
-            color: "#181b20"
+            Layout.preferredHeight: width
+            color: "#0a0c0e"
             border.color: "#2c323b"
             border.width: 2
             radius: 6
             clip: true
+
+            // Pixel-Perfect Authentic Among Us Background Art
+            Image {
+                id: bgArt
+                anchors.fill: parent
+                source: "../assets/textures/wire_puzzle_bg.png"
+                fillMode: Image.Stretch
+                smooth: true
+                mipmap: true
+            }
+
+            // Glowing Indicator Overlays (lit green when terminal connected)
+            Repeater {
+                model: 4
+                Rectangle {
+                    readonly property int rowIdx: index
+                    readonly property bool isConn: root.connections[rowIdx] !== -1
+
+                    x: chamber.width * root.normTabX
+                    y: chamber.height * root.normTabY[rowIdx]
+                    width: chamber.width * root.normTabW
+                    height: chamber.height * root.normTabH[rowIdx]
+                    radius: 2
+                    visible: isConn
+                    color: "#39ff14"
+                    border.color: "#a8ffb2"
+                    border.width: 1.5
+                    opacity: 0.95
+
+                    // Outer neon glow
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 6
+                        height: parent.height + 6
+                        radius: 4
+                        color: "transparent"
+                        border.color: "#2ecc71"
+                        border.width: 2
+                        opacity: 0.6
+                    }
+                }
+            }
+
+            // Selection Highlight Rings on Left Terminals
+            Repeater {
+                model: 4
+                Rectangle {
+                    readonly property int rowIdx: index
+                    readonly property bool isSel: root.selectedLeftIndex === rowIdx
+
+                    x: chamber.width * 0.015
+                    y: chamber.height * (root.normLeftRowY[rowIdx] - 0.055)
+                    width: chamber.width * 0.13
+                    height: chamber.height * 0.11
+                    radius: 4
+                    visible: isSel
+                    color: "transparent"
+                    border.color: "#00f0ff"
+                    border.width: 2
+                }
+            }
 
             // Interactive Wire Canvas
             Canvas {
@@ -295,91 +349,33 @@ Rectangle {
                     let ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
 
-                    // 1. Draw central cylindrical conduit column
-                    let colW = 280
-                    let colX = (width - colW) / 2
-                    let colGrad = ctx.createLinearGradient(colX, 0, colX + colW, 0)
-                    colGrad.addColorStop(0.0, "#101215")
-                    colGrad.addColorStop(0.15, "#1d2127")
-                    colGrad.addColorStop(0.5, "#2a2f38")
-                    colGrad.addColorStop(0.85, "#1d2127")
-                    colGrad.addColorStop(1.0, "#101215")
-                    ctx.fillStyle = colGrad
-                    ctx.fillRect(colX, 0, colW, height)
+                    let cw = width
+                    let ch = height
 
-                    // Conduit column edge shadow lines
-                    ctx.fillStyle = "#0c0e11"
-                    ctx.fillRect(colX - 2, 0, 2, height)
-                    ctx.fillRect(colX + colW, 0, 2, height)
-
-                    // 2. Draw background dangling cable bundles from top (authentic Among Us art)
-                    ctx.save()
-                    ctx.lineCap = "round"
-
-                    // Top bracket clamps
-                    ctx.fillStyle = "#4a5260"
-                    ctx.strokeStyle = "#1b1f24"
-                    ctx.lineWidth = 2
-                    // Clamp 1
-                    ctx.fillRect(colX + 75, 40, 32, 14)
-                    ctx.strokeRect(colX + 75, 40, 32, 14)
-                    // Clamp 2
-                    ctx.fillRect(colX + 155, 25, 32, 14)
-                    ctx.strokeRect(colX + 155, 25, 32, 14)
-
-                    // Clamp screws
-                    ctx.fillStyle = "#1e2229"
-                    ctx.beginPath()
-                    ctx.arc(colX + 81, 47, 2.5, 0, 2 * Math.PI)
-                    ctx.arc(colX + 101, 47, 2.5, 0, 2 * Math.PI)
-                    ctx.arc(colX + 161, 32, 2.5, 0, 2 * Math.PI)
-                    ctx.arc(colX + 181, 32, 2.5, 0, 2 * Math.PI)
-                    ctx.fill()
-
-                    // Background bundle cable curves
-                    function drawBundleCable(startX, startY, cp1x, cp1y, cp2x, cp2y, endX, endY, color, widthVal) {
-                        ctx.beginPath()
-                        ctx.moveTo(startX, startY)
-                        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY)
-                        ctx.strokeStyle = "#08090b"
-                        ctx.lineWidth = widthVal + 4
-                        ctx.stroke()
-                        ctx.strokeStyle = color
-                        ctx.lineWidth = widthVal
-                        ctx.stroke()
-                    }
-
-                    // Background cables coming from ceiling through clamps
-                    drawBundleCable(colX + 90, 0, colX + 90, 80, colX + 50, 160, colX + 40, 320, "#8b1e1e", 11) // Red cable
-                    drawBundleCable(colX + 170, 0, colX + 175, 90, colX + 185, 220, colX + 190, 520, "#8a6d1a", 13) // Gold cable
-                    drawBundleCable(colX + 85, 0, colX + 88, 120, colX + 75, 280, colX + 70, 520, "#1c1e22", 10) // Black cable
-                    drawBundleCable(colX + 93, 0, colX + 95, 140, colX + 60, 260, colX + 30, 280, "#194d82", 11) // Blue cable
-                    drawBundleCable(colX + 175, 0, colX + 170, 110, colX + 165, 300, colX + 168, 520, "#8b1e1e", 9) // Thin red cable
-                    drawBundleCable(colX + 160, 0, colX + 155, 130, colX + 140, 360, colX + 140, 520, "#194d82", 10) // Center blue cable
-                    ctx.restore()
-
-                    // 3. Helper to draw a thick, stylized connecting wire
+                    // Helper to draw a thick, stylized connecting wire matching Among Us aesthetics
                     function drawStylizedWire(x1, y1, x2, y2, color, highlightColor) {
                         ctx.save()
                         ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
 
                         let dx = x2 - x1
                         let dy = y2 - y1
                         let dist = Math.sqrt(dx * dx + dy * dy)
 
-                        // Natural drooping curve control points
-                        let sag = Math.max(12, Math.min(60, dist * 0.12))
-                        let cp1x = x1 + dx * 0.40
-                        let cp1y = y1 + dy * 0.20 + sag
-                        let cp2x = x1 + dx * 0.65
-                        let cp2y = y2 - dy * 0.15 + sag
+                        // Natural horizontal exit tangent with subtle gravitational droop
+                        let sag = Math.max(10, Math.min(50, dist * 0.11))
+                        let span = Math.max(30, dx * 0.45)
+                        let cp1x = x1 + span
+                        let cp1y = y1 + sag
+                        let cp2x = x2 - span
+                        let cp2y = y2 + sag
 
-                        // Layer 1: Dark outer border / casing
+                        // Layer 1: Dark outer border / casing (Among Us cartoon outline)
                         ctx.beginPath()
                         ctx.moveTo(x1, y1)
                         ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2)
                         ctx.strokeStyle = "#000000"
-                        ctx.lineWidth = 18
+                        ctx.lineWidth = 19
                         ctx.stroke()
 
                         // Layer 2: Main vibrant wire insulation
@@ -390,34 +386,34 @@ Rectangle {
                         ctx.lineWidth = 13
                         ctx.stroke()
 
-                        // Layer 3: Upper specular highlight
+                        // Layer 3: Upper specular highlight stripe
                         ctx.beginPath()
-                        ctx.moveTo(x1, y1 - 2)
-                        ctx.bezierCurveTo(cp1x, cp1y - 2, cp2x, cp2y - 2, x2, y2 - 2)
+                        ctx.moveTo(x1, y1 - 2.5)
+                        ctx.bezierCurveTo(cp1x, cp1y - 2.5, cp2x, cp2y - 2.5, x2, y2 - 2.5)
                         ctx.strokeStyle = highlightColor
-                        ctx.lineWidth = 3.5
+                        ctx.lineWidth = 3
                         ctx.stroke()
 
                         ctx.restore()
                     }
 
-                    // 4. Draw all established connections
+                    // 1. Draw all established connections
                     for (let leftIdx = 0; leftIdx < 4; ++leftIdx) {
                         let rightRow = root.connections[leftIdx]
                         if (rightRow !== -1) {
-                            let x1 = root.leftTipX
-                            let y1 = root.rowYPositions[leftIdx]
-                            let x2 = root.rightTipX
-                            let y2 = root.rowYPositions[rightRow]
+                            let x1 = cw * root.normLeftTipX
+                            let y1 = ch * root.normLeftRowY[leftIdx]
+                            let x2 = cw * root.normRightTipX
+                            let y2 = ch * root.normRightRowY[rightRow]
                             drawStylizedWire(x1, y1, x2, y2, root.wireColors[leftIdx], root.wireHighlightColors[leftIdx])
                         }
                     }
 
-                    // 5. Draw active dragging wire
+                    // 2. Draw active dragging wire
                     if (root.draggingWireIndex !== -1) {
                         let activeIdx = root.draggingWireIndex
-                        let x1 = root.leftTipX
-                        let y1 = root.rowYPositions[activeIdx]
+                        let x1 = cw * root.normLeftTipX
+                        let y1 = ch * root.normLeftRowY[activeIdx]
                         let x2 = root.dragCurrentPos.x
                         let y2 = root.dragCurrentPos.y
                         drawStylizedWire(x1, y1, x2, y2, root.wireColors[activeIdx], root.wireHighlightColors[activeIdx])
@@ -438,15 +434,15 @@ Rectangle {
                         // Frayed copper tips
                         ctx.fillStyle = "#f39c12"
                         ctx.beginPath()
-                        ctx.moveTo(2, -4); ctx.lineTo(7, -6); ctx.lineTo(4, -2); ctx.fill()
+                        ctx.moveTo(2, -4); ctx.lineTo(8, -6); ctx.lineTo(4, -2); ctx.fill()
                         ctx.beginPath()
-                        ctx.moveTo(2, -1); ctx.lineTo(8, 0);  ctx.lineTo(4, 2);  ctx.fill()
+                        ctx.moveTo(2, -1); ctx.lineTo(9, 0);  ctx.lineTo(4, 2);  ctx.fill()
                         ctx.beginPath()
-                        ctx.moveTo(2, 3);  ctx.lineTo(7, 5);  ctx.lineTo(4, 4);  ctx.fill()
+                        ctx.moveTo(2, 3);  ctx.lineTo(8, 5);  ctx.lineTo(4, 4);  ctx.fill()
                         ctx.restore()
                     }
 
-                    // 6. Draw electric spark particles
+                    // 3. Draw electric spark particles
                     for (let s = 0; s < root.sparkParticles.length; ++s) {
                         let sp = root.sparkParticles[s]
                         let alpha = Math.max(0, sp.life / sp.maxLife)
@@ -461,222 +457,6 @@ Rectangle {
                 }
             }
 
-            // ==================== LEFT TERMINALS REPEATER ====================
-            Repeater {
-                model: 4
-                Item {
-                    id: leftItem
-                    readonly property int wireIdx: index
-                    readonly property int centerY: root.rowYPositions[index]
-                    readonly property bool isConnected: root.connections[wireIdx] !== -1
-                    readonly property bool isDragging: root.draggingWireIndex === wireIdx
-                    readonly property bool isSelected: root.selectedLeftIndex === wireIdx
-
-                    x: 10
-                    y: centerY - 18
-                    width: 90
-                    height: 36
-
-                    // Base mounting plate
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "#16191d"
-                        border.color: isSelected ? "#00f0ff" : "#2d333b"
-                        border.width: isSelected ? 2 : 1
-                        radius: 3
-                    }
-
-                    // Left Terminal Colored Body Bar
-                    Rectangle {
-                        id: leftBar
-                        x: 4
-                        y: 4
-                        width: 68
-                        height: 28
-                        color: root.wireColors[wireIdx]
-                        border.color: "#0a0c0e"
-                        border.width: 2
-                        radius: 2
-
-                        // Top tab marker (characteristic detail from Among Us)
-                        Rectangle {
-                            x: 0
-                            y: -5
-                            width: 14
-                            height: 6
-                            color: root.wireColors[wireIdx]
-                            border.color: "#0a0c0e"
-                            border.width: 1
-                        }
-
-                        // Symbol glyph (○, ✕, △, ☆)
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.wireSymbols[wireIdx]
-                            color: "#000000"
-                            font.pixelSize: 17
-                            font.bold: true
-                        }
-                    }
-
-                    // Stripped Copper Wire Tip (protruding rightwards)
-                    Item {
-                        x: 72
-                        y: 8
-                        width: 20
-                        height: 20
-
-                        // Copper wire end coils
-                        Rectangle {
-                            x: 0; y: 4; width: 12; height: 12
-                            color: "#b85d19"
-                            border.color: "#6e330a"
-                            border.width: 1
-                            radius: 1
-                        }
-                        // Strands detail
-                        Rectangle { x: 2; y: 5; width: 2.5; height: 10; color: "#f39c12" }
-                        Rectangle { x: 6; y: 5; width: 2.5; height: 10; color: "#e67e22" }
-
-                        // Frayed copper threads extending into canvas
-                        Canvas {
-                            anchors.fill: parent
-                            onPaint: {
-                                let c = getContext("2d")
-                                c.clearRect(0, 0, width, height)
-                                c.strokeStyle = "#e67e22"
-                                c.lineWidth = 1.8
-                                c.beginPath()
-                                c.moveTo(12, 6);  c.lineTo(18, 5)
-                                c.moveTo(12, 10); c.lineTo(19, 10)
-                                c.moveTo(12, 14); c.lineTo(18, 15)
-                                c.stroke()
-                            }
-                        }
-                    }
-
-                    // Status Indicator LED on left
-                    Rectangle {
-                        x: -4
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 6
-                        height: 14
-                        radius: 2
-                        color: leftItem.isConnected ? "#2ecc71" : "#57606f"
-                        border.color: leftItem.isConnected ? "#a8ffb2" : "#2f3542"
-                        border.width: 1
-                    }
-                }
-            }
-
-            // ==================== RIGHT TERMINALS REPEATER ====================
-            Repeater {
-                model: 4
-                Item {
-                    id: rightItem
-                    readonly property int rightRow: index
-                    readonly property int targetWireIdx: root.rightOrder[rightRow]
-                    readonly property int centerY: root.rowYPositions[rightRow]
-                    readonly property bool isConnected: {
-                        for (let i = 0; i < root.connections.length; ++i) {
-                            if (root.connections[i] === rightRow) return true
-                        }
-                        return false
-                    }
-
-                    x: chamber.width - 100
-                    y: centerY - 18
-                    width: 90
-                    height: 36
-
-                    // Base mounting plate
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "#16191d"
-                        border.color: rightItem.isConnected ? "#2ecc71" : "#2d333b"
-                        border.width: rightItem.isConnected ? 2 : 1
-                        radius: 3
-                    }
-
-                    // Stripped Copper Wire Tip (pointing leftwards towards center)
-                    Item {
-                        x: -2
-                        y: 8
-                        width: 20
-                        height: 20
-
-                        Rectangle {
-                            x: 6; y: 4; width: 12; height: 12
-                            color: "#b85d19"
-                            border.color: "#6e330a"
-                            border.width: 1
-                            radius: 1
-                        }
-                        Rectangle { x: 8; y: 5; width: 2.5; height: 10; color: "#e67e22" }
-                        Rectangle { x: 12; y: 5; width: 2.5; height: 10; color: "#f39c12" }
-
-                        Canvas {
-                            anchors.fill: parent
-                            onPaint: {
-                                let c = getContext("2d")
-                                c.clearRect(0, 0, width, height)
-                                c.strokeStyle = "#e67e22"
-                                c.lineWidth = 1.8
-                                c.beginPath()
-                                c.moveTo(6, 6);  c.lineTo(1, 5)
-                                c.moveTo(6, 10); c.lineTo(0, 10)
-                                c.moveTo(6, 14); c.lineTo(1, 15)
-                                c.stroke()
-                            }
-                        }
-                    }
-
-                    // Right Terminal Colored Body Bar
-                    Rectangle {
-                        x: 18
-                        y: 4
-                        width: 68
-                        height: 28
-                        color: root.wireColors[targetWireIdx]
-                        border.color: "#0a0c0e"
-                        border.width: 2
-                        radius: 2
-
-                        // Top tab marker
-                        Rectangle {
-                            x: parent.width - 14
-                            y: -5
-                            width: 14
-                            height: 6
-                            color: root.wireColors[targetWireIdx]
-                            border.color: "#0a0c0e"
-                            border.width: 1
-                        }
-
-                        // Symbol glyph
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.wireSymbols[targetWireIdx]
-                            color: "#000000"
-                            font.pixelSize: 17
-                            font.bold: true
-                        }
-                    }
-
-                    // Status Indicator LED on right (glows bright green when connected!)
-                    Rectangle {
-                        x: parent.width - 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 6
-                        height: 14
-                        radius: 2
-                        color: rightItem.isConnected ? "#2ecc71" : "#57606f"
-                        border.color: rightItem.isConnected ? "#a8ffb2" : "#2f3542"
-                        border.width: 1
-                    }
-                }
-            }
-
             // ==================== INTERACTION MOUSE AREA ====================
             MouseArea {
                 id: interactionArea
@@ -687,10 +467,13 @@ Rectangle {
                 onPressed: function(mouse) {
                     if (root.puzzleManager && root.puzzleManager.powerSolved) return
 
+                    let cw = chamber.width
+                    let ch = chamber.height
+
                     // Check if pressed on a Left Terminal
                     for (let i = 0; i < 4; ++i) {
-                        let ly = root.rowYPositions[i]
-                        if (mouse.x <= 130 && Math.abs(mouse.y - ly) <= 32) {
+                        let ly = ch * root.normLeftRowY[i]
+                        if (mouse.x <= cw * 0.16 && Math.abs(mouse.y - ly) <= ch * 0.055) {
                             root.draggingWireIndex = i
                             root.selectedLeftIndex = i
                             root.dragCurrentPos = Qt.point(mouse.x, mouse.y)
@@ -706,17 +489,18 @@ Rectangle {
                         }
                     }
 
-                    // Check if clicked directly on a Right Terminal while left is selected
+                    // Check if clicked directly on a Right Terminal while a left terminal is selected
                     if (root.selectedLeftIndex !== -1) {
                         for (let j = 0; j < 4; ++j) {
-                            let ry = root.rowYPositions[j]
-                            if (mouse.x >= chamber.width - 130 && Math.abs(mouse.y - ry) <= 32) {
+                            let ry = ch * root.normRightRowY[j]
+                            if (mouse.x >= cw * 0.82 && Math.abs(mouse.y - ry) <= ch * 0.055) {
                                 if (root.rightOrder[j] === root.selectedLeftIndex) {
                                     // MATCH!
                                     let newConns = root.connections.slice()
                                     newConns[root.selectedLeftIndex] = j
                                     root.connections = newConns
-                                    root.addSparks(root.rightTipX, ry, root.wireColors[root.selectedLeftIndex])
+                                    let rx = cw * root.normRightTipX
+                                    root.addSparks(rx, ry, root.wireColors[root.selectedLeftIndex])
                                     root.selectedLeftIndex = -1
                                     root.draggingWireIndex = -1
                                     root.checkSuccess()
@@ -739,19 +523,20 @@ Rectangle {
                 onReleased: function(mouse) {
                     if (root.draggingWireIndex !== -1) {
                         let activeIdx = root.draggingWireIndex
-                        let connected = false
+                        let cw = chamber.width
+                        let ch = chamber.height
 
                         // Check if released on/near matching right terminal
                         for (let j = 0; j < 4; ++j) {
-                            let ry = root.rowYPositions[j]
-                            if (mouse.x >= chamber.width - 150 && Math.abs(mouse.y - ry) <= 36) {
+                            let ry = ch * root.normRightRowY[j]
+                            if (mouse.x >= cw * 0.80 && Math.abs(mouse.y - ry) <= ch * 0.065) {
                                 if (root.rightOrder[j] === activeIdx) {
                                     // SUCCESS MATCH!
                                     let newConns = root.connections.slice()
                                     newConns[activeIdx] = j
                                     root.connections = newConns
-                                    root.addSparks(root.rightTipX, ry, root.wireColors[activeIdx])
-                                    connected = true
+                                    let rx = cw * root.normRightTipX
+                                    root.addSparks(rx, ry, root.wireColors[activeIdx])
                                     root.checkSuccess()
                                     break
                                 }
@@ -767,10 +552,10 @@ Rectangle {
             // ==================== SOLVED OVERLAY BANNER ====================
             Rectangle {
                 anchors.centerIn: parent
-                width: 480
-                height: 140
+                width: parent.width * 0.85
+                height: 130
                 visible: root.isFullyConnected
-                color: "#e60a1f14"
+                color: "#f00a1f14"
                 border.color: "#2ecc71"
                 border.width: 2
                 radius: 6
@@ -787,7 +572,7 @@ Rectangle {
                         Text {
                             text: "WIRING RESTORED // CONTINUITY 100%"
                             color: "#2ecc71"
-                            font.pixelSize: 18
+                            font.pixelSize: 16
                             font.bold: true
                             font.letterSpacing: 1
                         }
@@ -797,10 +582,10 @@ Rectangle {
                         Layout.alignment: Qt.AlignHCenter
                         text: "BULKHEAD ACCESS INTERLOCK RELEASED — CARD READERS ONLINE"
                         color: "#a8ffb2"
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                     }
 
-                    Item { height: 4 }
+                    Item { height: 2 }
 
                     Button {
                         Layout.alignment: Qt.AlignHCenter
@@ -808,13 +593,13 @@ Rectangle {
                             text: "[RETURN TO FACILITY]"
                             color: "#ffffff"
                             font.bold: true
-                            font.pixelSize: 13
+                            font.pixelSize: 12
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
                         background: Rectangle {
-                            implicitWidth: 190
-                            implicitHeight: 34
+                            implicitWidth: 180
+                            implicitHeight: 32
                             color: parent.down ? "#1e8449" : (parent.hovered ? "#2ecc71" : "#27ae60")
                             border.color: "#2ecc71"
                             border.width: 1
@@ -853,8 +638,8 @@ Rectangle {
                     verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
-                    implicitWidth: 120
-                    implicitHeight: 32
+                    implicitWidth: 110
+                    implicitHeight: 28
                     color: parent.down ? "#7f8c8d" : (parent.hovered ? "#4b6584" : "#242a32")
                     border.color: parent.enabled ? "#4a5568" : "#2d3436"
                     border.width: 1

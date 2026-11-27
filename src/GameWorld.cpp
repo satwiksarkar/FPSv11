@@ -119,7 +119,27 @@ bool GameWorld::raycastDDA(const QVector3D &origin, const QVector3D &direction, 
 {
     if (m_collisionSystem && m_levelManager) {
         int hitTile = 0;
-        return m_collisionSystem->raycastDDA(m_levelManager, origin, direction, maxDist, outDist, outHitPos, hitTile);
+        float ddaDist = maxDist;
+        bool hitDDA = m_collisionSystem->raycastDDA(m_levelManager, origin, direction, maxDist, ddaDist, outHitPos, hitTile);
+
+        // Also verify rays against level obstacles (barriers, custom vault doors)
+        float boxDist = maxDist;
+        QString tag;
+        bool hitBox = m_collisionSystem->raycast(origin, direction, maxDist, boxDist, tag);
+
+        if (hitDDA && hitBox) {
+            outDist = qMin(ddaDist, boxDist);
+            outHitPos = origin + direction.normalized() * outDist;
+            return true;
+        } else if (hitDDA) {
+            outDist = ddaDist;
+            return true;
+        } else if (hitBox) {
+            outDist = boxDist;
+            outHitPos = origin + direction.normalized() * outDist;
+            return true;
+        }
+        return false;
     }
     QString hitTag;
     if (m_collisionSystem && m_collisionSystem->raycast(origin, direction, maxDist, outDist, hitTag)) {

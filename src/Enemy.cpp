@@ -32,6 +32,10 @@ Enemy::Enemy(EnemyType type, QObject *parent)
     , m_muzzleFlashTimer(0.0f)
     , m_canShoot(false)
     , m_currentPathIndex(0)
+    , m_spawnPosition(0.0f, 0.0f, 0.0f)
+    , m_currentPatrolIndex(0)
+    , m_isLeashed(false)
+    , m_leashBounds()
 {
     // Set type-specific constants
     if (m_type == EnemyType::Drone) {
@@ -330,14 +334,38 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
     float dz = playerPos.z() - m_position.z();
     float dist = qSqrt(dx * dx + dz * dz);
 
-    bool canSee = (dist <= m_detectRange) && hasLineOfSight(playerPos);
+    // Check leash bounds (e.g. Sector K3 Sentinel testing grounds)
+    bool withinLeash = true;
+    if (m_isLeashed && !m_leashBounds.isNull()) {
+        withinLeash = m_leashBounds.contains(playerPos.x(), playerPos.z())
+                   && m_leashBounds.contains(m_position.x(), m_position.z());
+    }
+
+    bool canSee = withinLeash && (dist <= m_detectRange) && hasLineOfSight(playerPos);
 
     switch (m_sentinelState) {
     case SentinelState::Guard:
         if (canSee) {
             m_sentinelState = SentinelState::Detect;
             m_lastSeenPlayerPos = playerPos;
+            m_aimTimer = m_aimDuration;
             qDebug() << "[Sentinel] Player detected at distance:" << dist;
+        } else if (!m_patrolWaypoints.isEmpty()) {
+            // Active tactical patrol along sector waypoints
+            QVector3D targetWp = m_patrolWaypoints[m_currentPatrolIndex];
+            float wdx = targetWp.x() - m_position.x();
+            float wdz = targetWp.z() - m_position.z();
+            float wDist = qSqrt(wdx * wdx + wdz * wdz);
+            if (wDist < 45.0f) {
+                m_currentPatrolIndex = (m_currentPatrolIndex + 1) % m_patrolWaypoints.size();
+                targetWp = m_patrolWaypoints[m_currentPatrolIndex];
+            }
+            if (m_pathfindTimer <= 0.0f) {
+                m_pathfindTimer = GameConfig::ENEMY_PATHFIND_REFRESH;
+                computeBFSPath(targetWp);
+            }
+            moveAlongPath(deltaTime, 65.0f); // Deliberate patrol pace
+            faceTarget(targetWp);
         }
         break;
 
@@ -363,6 +391,19 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
             m_pathfindTimer = 0.0f;
         } else {
             m_lastSeenPlayerPos = playerPos;
+
+            // March steadily toward player if beyond optimal firing distance
+            if (dist > 350.0f) {
+                QVector3D moveDir(dx / dist, 0.0f, dz / dist);
+                QVector3D nextPos = m_position + moveDir * (m_moveSpeed * 0.5f * deltaTime);
+                if (m_world) {
+                    m_position = m_world->resolveCollision(m_position, nextPos, 35.0f);
+                } else {
+                    m_position = nextPos;
+                }
+                emit positionChanged(m_position);
+            }
+
             m_aimTimer -= deltaTime;
             if (m_aimTimer <= 0.0f) {
                 m_sentinelState = SentinelState::Shoot;
@@ -380,6 +421,28 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
         } else {
             m_lastSeenPlayerPos = playerPos;
 
+            // Tactical Terminator combat advance: close gap or hold ground
+            if (dist > 320.0f) {
+                QVector3D moveDir(dx / dist, 0.0f, dz / dist);
+                QVector3D nextPos = m_position + moveDir * (m_moveSpeed * 0.45f * deltaTime);
+                if (m_world) {
+                    m_position = m_world->resolveCollision(m_position, nextPos, 35.0f);
+                } else {
+                    m_position = nextPos;
+                }
+                emit positionChanged(m_position);
+            } else if (dist < 180.0f) {
+                // Back up slightly if player gets point-blank
+                QVector3D backDir(-dx / dist, 0.0f, -dz / dist);
+                QVector3D nextPos = m_position + backDir * (m_moveSpeed * 0.35f * deltaTime);
+                if (m_world) {
+                    m_position = m_world->resolveCollision(m_position, nextPos, 35.0f);
+                } else {
+                    m_position = nextPos;
+                }
+                emit positionChanged(m_position);
+            }
+
             if (m_attackTimer <= 0.0f) {
                 m_attackTimer = m_attackCooldown;
 
@@ -388,7 +451,7 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
                 bool didHit = (roll <= m_hitChance);
 
                 m_isShooting = true;
-                m_muzzleFlashTimer = 0.1f;
+                m_muzzleFlashTimer = 0.12f;
                 emit isShootingChanged(true);
 
                 if (didHit && player && !player->isDead()) {
@@ -410,10 +473,10 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
         }
         moveAlongPath(deltaTime, m_moveSpeed * 0.6f);
 
-        // Check if player reappears
+        // Check if player reappears within leash bounds
         if (canSee) {
             m_lastSeenPlayerPos = playerPos;
-            m_aimTimer = m_aimDuration * 0.5f; // Quicker re-aim
+            m_aimTimer = m_aimDuration * 0.4f; // Faster lock on re-sight
             m_sentinelState = SentinelState::Aim;
             break;
         }
@@ -421,7 +484,14 @@ void Enemy::updateSentinel(float deltaTime, const QVector3D &playerPos, Player *
         m_searchTimer -= deltaTime;
         if (m_searchTimer <= 0.0f) {
             m_sentinelState = SentinelState::Guard;
-            qDebug() << "[Sentinel] Search complete, returning to GUARD.";
+            m_currentPathIndex = 0;
+            // Return towards patrol route or spawn anchor
+            if (!m_patrolWaypoints.isEmpty()) {
+                computeBFSPath(m_patrolWaypoints[m_currentPatrolIndex]);
+            } else {
+                computeBFSPath(m_spawnPosition);
+            }
+            qDebug() << "[Sentinel] Search complete, returning to GUARD/PATROL.";
         }
         break;
 
@@ -775,6 +845,10 @@ void Enemy::reset()
     m_muzzleFlashTimer = 0.0f;
     m_bfsPath.clear();
     m_currentPathIndex = 0;
+    m_currentPatrolIndex = 0;
+    m_patrolWaypoints.clear();
+    m_isLeashed = false;
+    m_leashBounds = QRectF();
     m_isActive = false;
 
     emit positionChanged(m_position);
@@ -789,6 +863,7 @@ void Enemy::respawn(const QVector3D &spawnPos)
 {
     reset();
     m_position = spawnPos;
+    m_spawnPosition = spawnPos;
     m_isActive = true;
 
     emit positionChanged(m_position);

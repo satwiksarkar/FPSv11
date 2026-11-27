@@ -390,6 +390,23 @@ Window {
         pickupL1StorageMedkit, pickupL1StorageFood
     ]
 
+    // Level 3 Spawn Room Pickups (Row 34..37, Col 18..22)
+    Pickup { id: pickupL3SpawnMedkit1; itemType: Inventory.Medkit; position: Qt.vector3d(1850, 25, 3650) }
+    Pickup { id: pickupL3SpawnMedkit2; itemType: Inventory.Medkit; position: Qt.vector3d(2250, 25, 3650) }
+    Pickup { id: pickupL3SpawnMedkit3; itemType: Inventory.Medkit; position: Qt.vector3d(2050, 25, 3450) }
+    Pickup { id: pickupL3SpawnBandage1; itemType: Inventory.Bandage; position: Qt.vector3d(1850, 25, 3550) }
+    Pickup { id: pickupL3SpawnBandage2; itemType: Inventory.Bandage; position: Qt.vector3d(2250, 25, 3550) }
+    Pickup { id: pickupL3SpawnBandage3; itemType: Inventory.Bandage; position: Qt.vector3d(1950, 25, 3450) }
+    Pickup { id: pickupL3SpawnBandage4; itemType: Inventory.Bandage; position: Qt.vector3d(2150, 25, 3450) }
+    Pickup { id: pickupL3SpawnFood1; itemType: Inventory.FoodPack; position: Qt.vector3d(1850, 25, 3750) }
+    Pickup { id: pickupL3SpawnFood2; itemType: Inventory.FoodPack; position: Qt.vector3d(2250, 25, 3750) }
+
+    property var l3SpawnPickups: [
+        pickupL3SpawnMedkit1, pickupL3SpawnMedkit2, pickupL3SpawnMedkit3,
+        pickupL3SpawnBandage1, pickupL3SpawnBandage2, pickupL3SpawnBandage3, pickupL3SpawnBandage4,
+        pickupL3SpawnFood1, pickupL3SpawnFood2
+    ]
+
     // ==================== LEVEL FLOW & STATS PERSISTENCE ====================
     function applyWeaponDifficultyTuning() {
         if (levelManager.currentLevel === 3) {
@@ -536,12 +553,21 @@ Window {
             for (var spi3 = 0; spi3 < l1ExtraPickups.length; ++spi3) {
                 l1ExtraPickups[spi3].isCollected = true
             }
+            for (var l3pi = 0; l3pi < l3SpawnPickups.length; ++l3pi) {
+                l3SpawnPickups[l3pi].isCollected = false
+                l3SpawnPickups[l3pi].reset()
+            }
             pickupBandage.position = Qt.vector3d(1850, 25, 3450)
             pickupMedkit.position = Qt.vector3d(2250, 25, 3450)
             pickupFood.position = Qt.vector3d(2050, 25, 3650)
             pickupExtraBandage.position = Qt.vector3d(450, 25, 2050)
             pickupExtraMedkit.position = Qt.vector3d(3650, 25, 2050)
             pickupExtraFood.position = Qt.vector3d(2050, 25, 450)
+        }
+        if (lvl !== 3) {
+            for (var l3c = 0; l3c < l3SpawnPickups.length; ++l3c) {
+                l3SpawnPickups[l3c].isCollected = true
+            }
         }
         pickupFood.reset()
         pickupBandage.reset()
@@ -621,12 +647,17 @@ Window {
             }
             console.log("[Main] Level 2 Enemies spawned - Sentinels:", sCount, "Drones:", dCount, "Active:", enemyManager.activeCount)
         } else if (currentLvl === 3) {
-            // Level 3: Spawn initial arena guardian Drones from perimeter gates (away from player south spawn)
-            enemyManager.spawnDrone(Qt.vector3d(1950, 0, 250))
-            enemyManager.spawnDrone(Qt.vector3d(3750, 0, 1950))
-            enemyManager.spawnDrone(Qt.vector3d(3250, 0, 650))
-            enemyManager.spawnDrone(Qt.vector3d(250, 0, 1950))
-            console.log("[Main] Level 3 Logic Core initialized. Active Drones:", enemyManager.activeCount)
+            // Level 3: Final server room (Logic Core arena) guards:
+            // 2 Sentinels and 6 Drones stationed in the final server room
+            var s3Count = levelManager.sentinelSpawnCount()
+            for (var s3 = 0; s3 < s3Count; ++s3) {
+                enemyManager.spawnSentinel(levelManager.sentinelSpawn(s3))
+            }
+            var d3Count = levelManager.droneSpawnCount()
+            for (var d3 = 0; d3 < d3Count; ++d3) {
+                enemyManager.spawnDrone(levelManager.droneSpawn(d3))
+            }
+            console.log("[Main] Level 3 Final Server Room initialized - Sentinels:", s3Count, "Drones:", d3Count, "Active:", enemyManager.activeCount)
         } else {
             // Test level fallback
             var blockSize = levelManager.blockSize
@@ -655,6 +686,7 @@ Window {
     property bool mouseLookActive: false
     property string hitNotificationText: ""
     property color hitNotificationColor: "#ffffff"
+    property bool showingPrologue: false
     property real enemySpawnCountdown: 2.0
     property bool enemiesSpawnedForLevel: false
 
@@ -896,6 +928,27 @@ Window {
                                    : ((pItem.itemType === Inventory.Bandage) ? "#3498db" : "#e74c3c")
                         root.hitNotificationText = "COLLECTED " + pName
                         root.hitNotificationColor = pColor
+                        hitNotificationTimer.restart()
+                        playSound("pickup")
+                    }
+                }
+            }
+
+            // Level 3 Spawn Room Pickups Collection
+            if (levelManager.currentLevel === 3) {
+                for (var l3i = 0; l3i < l3SpawnPickups.length; ++l3i) {
+                    var l3Item = l3SpawnPickups[l3i]
+                    if (!l3Item) continue
+                    l3Item.update(frameTime)
+                    if (!l3Item.isCollected && l3Item.checkCollection(player.position)) {
+                        player.inventory.addItem(l3Item.itemType, 1)
+                        var l3Name = (l3Item.itemType === Inventory.FoodPack) ? "FOOD PACK (+20 HP) [PRESS 1]"
+                                   : ((l3Item.itemType === Inventory.Bandage) ? "BANDAGE (+30 HP) [PRESS 2]"
+                                   : "MEDKIT (+50 HP) [PRESS 3]")
+                        var l3Color = (l3Item.itemType === Inventory.FoodPack) ? "#2ecc71"
+                                    : ((l3Item.itemType === Inventory.Bandage) ? "#3498db" : "#e74c3c")
+                        root.hitNotificationText = "COLLECTED " + l3Name
+                        root.hitNotificationColor = l3Color
                         hitNotificationTimer.restart()
                         playSound("pickup")
                     }
@@ -1448,7 +1501,29 @@ Window {
             }
         }
 
-        // ==================== 3D VOXEL PICKUPS ====================
+        // ==================== 3D VOXEL PICKUP TEXTURES & MODELS ====================
+        Texture {
+            id: texFoodPack
+            source: "../assets/textures/food_pack.png"
+            magFilter: Texture.Linear
+            minFilter: Texture.Linear
+            generateMipmaps: true
+        }
+        Texture {
+            id: texBandage
+            source: "../assets/textures/bandage.png"
+            magFilter: Texture.Linear
+            minFilter: Texture.Linear
+            generateMipmaps: true
+        }
+        Texture {
+            id: texMedkit
+            source: "../assets/textures/medkit.png"
+            magFilter: Texture.Linear
+            minFilter: Texture.Linear
+            generateMipmaps: true
+        }
+
         // Food Pack
         Node {
             position: pickupFood.renderPosition
@@ -1456,8 +1531,8 @@ Window {
             visible: !pickupFood.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.35, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.40, 0.22, 0.30)
+                materials: [ PrincipledMaterial { baseColorMap: texFoodPack; roughness: 0.50; metalness: 0.25 } ]
             }
         }
         // Bandage
@@ -1467,8 +1542,8 @@ Window {
             visible: !pickupBandage.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.35, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#3498db"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.32, 0.28, 0.22)
+                materials: [ PrincipledMaterial { baseColorMap: texBandage; roughness: 0.55; metalness: 0.20 } ]
             }
         }
         // Medkit
@@ -1478,8 +1553,8 @@ Window {
             visible: !pickupMedkit.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.40, 0.40, 0.40)
-                materials: [ PrincipledMaterial { baseColor: "#e74c3c"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.45, 0.32, 0.35)
+                materials: [ PrincipledMaterial { baseColorMap: texMedkit; roughness: 0.40; metalness: 0.50 } ]
             }
         }
         // Extra Bandage (Loading Bay)
@@ -1489,8 +1564,8 @@ Window {
             visible: !pickupExtraBandage.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.35, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#3498db"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.32, 0.28, 0.22)
+                materials: [ PrincipledMaterial { baseColorMap: texBandage; roughness: 0.55; metalness: 0.20 } ]
             }
         }
         // Extra Food Pack (Pre-Elevator)
@@ -1500,8 +1575,8 @@ Window {
             visible: !pickupExtraFood.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.35, 0.35, 0.35)
-                materials: [ PrincipledMaterial { baseColor: "#2ecc71"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.40, 0.22, 0.30)
+                materials: [ PrincipledMaterial { baseColorMap: texFoodPack; roughness: 0.50; metalness: 0.25 } ]
             }
         }
         // Extra Medkit
@@ -1511,8 +1586,8 @@ Window {
             visible: !pickupExtraMedkit.isCollected
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.40, 0.40, 0.40)
-                materials: [ PrincipledMaterial { baseColor: "#e74c3c"; roughness: 0.5 } ]
+                scale: Qt.vector3d(0.45, 0.32, 0.35)
+                materials: [ PrincipledMaterial { baseColorMap: texMedkit; roughness: 0.40; metalness: 0.50 } ]
             }
         }
 
@@ -1527,13 +1602,38 @@ Window {
                 Model {
                     source: "#Cube"
                     scale: (modelData.itemType === Inventory.Medkit)
-                           ? Qt.vector3d(0.40, 0.40, 0.40)
-                           : Qt.vector3d(0.35, 0.35, 0.35)
+                           ? Qt.vector3d(0.45, 0.32, 0.35)
+                           : ((modelData.itemType === Inventory.FoodPack) ? Qt.vector3d(0.40, 0.22, 0.30) : Qt.vector3d(0.32, 0.28, 0.22))
                     materials: [ PrincipledMaterial {
-                        baseColor: (modelData.itemType === Inventory.FoodPack)
-                                   ? "#2ecc71"
-                                   : ((modelData.itemType === Inventory.Bandage) ? "#3498db" : "#e74c3c")
-                        roughness: 0.5
+                        baseColorMap: (modelData.itemType === Inventory.Medkit)
+                                      ? texMedkit
+                                      : ((modelData.itemType === Inventory.FoodPack) ? texFoodPack : texBandage)
+                        roughness: (modelData.itemType === Inventory.Medkit) ? 0.40 : 0.50
+                        metalness: (modelData.itemType === Inventory.Medkit) ? 0.50 : 0.25
+                    } ]
+                }
+            }
+        }
+
+        // ==================== LEVEL 3 SPAWN ROOM 3D VOXEL PICKUPS ====================
+        Repeater3D {
+            model: root.l3SpawnPickups
+            delegate: Node {
+                position: modelData.renderPosition
+                eulerRotation: Qt.vector3d(0, modelData.rotationY, 0)
+                visible: levelManager.currentLevel === 3 && !modelData.isCollected
+
+                Model {
+                    source: "#Cube"
+                    scale: (modelData.itemType === Inventory.Medkit)
+                           ? Qt.vector3d(0.45, 0.32, 0.35)
+                           : ((modelData.itemType === Inventory.FoodPack) ? Qt.vector3d(0.40, 0.22, 0.30) : Qt.vector3d(0.32, 0.28, 0.22))
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: (modelData.itemType === Inventory.Medkit)
+                                      ? texMedkit
+                                      : ((modelData.itemType === Inventory.FoodPack) ? texFoodPack : texBandage)
+                        roughness: (modelData.itemType === Inventory.Medkit) ? 0.40 : 0.50
+                        metalness: (modelData.itemType === Inventory.Medkit) ? 0.50 : 0.25
                     } ]
                 }
             }
@@ -1574,9 +1674,17 @@ Window {
                 return
             }
 
-            // Story screen: Enter/Return/Space continues
+            // Story / Intro screen key handling
             if (gameManager.isStoryText) {
-                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                if (introSlideshow.visible) {
+                    if (event.key === Qt.Key_Escape) {
+                        introSlideshow.skipIntro()
+                    } else if (event.key === Qt.Key_Left || event.key === Qt.Key_A) {
+                        introSlideshow.previousSlide()
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || event.key === Qt.Key_Right || event.key === Qt.Key_D) {
+                        introSlideshow.nextSlide()
+                    }
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
                     storyScreen.continueRequested()
                 }
                 event.accepted = true
@@ -1907,7 +2015,7 @@ Window {
     StoryScreen {
         id: storyScreen
         anchors.fill: parent
-        visible: gameManager.isStoryText
+        visible: gameManager.isStoryText && !introSlideshow.visible
         title: levelManager.storyTitle
         storyText: levelManager.storyText
         isWin: levelManager.currentLevel > 3 || gameManager.isWon
@@ -1924,6 +2032,16 @@ Window {
         }
     }
 
+    // ==================== PROLOGUE INTRO SLIDESHOW ====================
+    IntroSlideshow {
+        id: introSlideshow
+        anchors.fill: parent
+        visible: root.showingPrologue && gameManager.isStoryText && levelManager.currentLevel === 1 && !gameManager.isWon
+        onIntroFinished: {
+            root.showingPrologue = false
+        }
+    }
+
     // ==================== MENUS & MODALS ====================
     MainMenu {
         id: mainMenu
@@ -1931,12 +2049,19 @@ Window {
         visible: gameManager.isMainMenu
         gameManager: gameManager
         onStartGameRequested: {
+            root.showingPrologue = false
             var lvl = mainMenu.selectedLevel ? mainMenu.selectedLevel : 1
             root.startNewCampaign(lvl)
         }
         onStartLevelRequested: function(lvl) {
+            root.showingPrologue = false
             mainMenu.selectedLevel = lvl
             root.startNewCampaign(lvl)
+        }
+        onStartPrologueRequested: {
+            root.showingPrologue = true
+            mainMenu.selectedLevel = 1
+            root.startNewCampaign(1)
         }
         onExitRequested: {
             Qt.quit()

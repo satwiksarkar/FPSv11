@@ -30,6 +30,52 @@ Node {
     property real rotorAngle: 0
     readonly property real forwardBank: (enemyObj && enemyObj.isAttacking) ? -12 : ((enemyObj && enemyObj.stateString === "CHASE") ? -7 : 0)
 
+    // Dedicated High-Resolution Terminator Mech Textures
+    Texture {
+        id: texSentinelHead
+        source: "../assets/textures/sentinel_head.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+    Texture {
+        id: texSentinelArmor
+        source: "../assets/textures/sentinel_armor.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+    Texture {
+        id: texSentinelCore
+        source: "../assets/textures/sentinel_core.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+    Texture {
+        id: texSentinelGun
+        source: "../assets/textures/sentinel_gun.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    // Terminator Bipedal Mech Walk & Stance Animations
+    property real sentinelWalkPhase: 0.0
+    readonly property bool isSentinelWalking: !root.isDrone && root.enemyObj && (root.enemyObj.stateString === "CHASE" || root.enemyObj.stateString === "SEARCH" || root.enemyObj.stateString === "GUARD" || root.enemyObj.stateString === "AIM")
+
+    NumberAnimation on sentinelWalkPhase {
+        from: 0
+        to: Math.PI * 2
+        duration: 950
+        loops: Animation.Infinite
+        running: root.isVisible && !root.isDead && root.isSentinelWalking
+    }
+
+    readonly property real legSwingAngle: isSentinelWalking ? Math.sin(sentinelWalkPhase) * 24 : 0
+    readonly property real armSwingAngle: isSentinelWalking ? -Math.sin(sentinelWalkPhase) * 20 : 0
+    readonly property real torsoBob: isSentinelWalking ? Math.abs(Math.sin(sentinelWalkPhase * 2)) * 3.0 : 0
+
     // Scrap Debris Death Simulation Properties
     property bool isDying: false
     property real scrapProgress: 0.0
@@ -452,93 +498,388 @@ Node {
             }
         }
 
-        // ==================== SENTINEL MODEL (Ranged gunner mech) ====================
+        // ==================== SENTINEL MODEL (Terminator Combat Gunner Mech) ====================
         Node {
             id: sentinelNode
             visible: !root.isDrone
+            position: Qt.vector3d(0, root.torsoBob, 0)
 
-            // Head
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.5, 0.5, 0.5)
-                position: Qt.vector3d(0, 155, 0)
-                materials: [ PrincipledMaterial {
-                    baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#e74c3c" : "#992d22"
-                    roughness: 0.9
-                }]
-            }
-            // Cyber-Visor
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.42, 0.16, 0.12)
-                position: Qt.vector3d(0, 155, 26)
-                materials: [ PrincipledMaterial {
-                    baseColor: "#ff0022"
-                    lighting: PrincipledMaterial.NoLighting
-                }]
-            }
-            // Torso
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.7, 0.7, 0.4)
-                position: Qt.vector3d(0, 95, 0)
-                materials: [ PrincipledMaterial { baseColor: "#8b1e0f"; roughness: 0.85 }]
-            }
-            // Left Arm
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.24, 0.65, 0.24)
-                position: Qt.vector3d(-46, 95, 0)
-                materials: [ PrincipledMaterial { baseColor: "#7f1d1d"; roughness: 0.9 }]
-            }
-            // Right Arm with rifle
+            // --- 1. Cybernetic Skull / Head ---
             Node {
-                position: Qt.vector3d(46, 95, 0)
-                eulerRotation: Qt.vector3d(-70, 0, 0)
+                position: Qt.vector3d(0, 155, 0)
+
+                // Armored Skull Faceplate (Bright silver titanium alloy)
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.24, 0.65, 0.24)
-                    position: Qt.vector3d(0, -25, 0)
-                    materials: [ PrincipledMaterial { baseColor: "#7f1d1d" }]
+                    scale: Qt.vector3d(0.50, 0.48, 0.48)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelHead
+                        metalness: 0.30
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+                    }]
+                }
+                // Glowing Ruby Ocular Visor / Sensor Strip
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.44, 0.14, 0.14)
+                    position: Qt.vector3d(0, 1, 24)
+                    materials: [ PrincipledMaterial {
+                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff0033" : "#ff2244"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Temple Hydraulic Armor Plates (Left & Right - Light silver alloy)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.08, 0.32, 0.35)
+                    position: Qt.vector3d(-26, -2, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
                 }
                 Model {
                     source: "#Cube"
-                    scale: Qt.vector3d(0.12, 0.16, 0.55)
-                    position: Qt.vector3d(0, -56, 12)
-                    materials: [ PrincipledMaterial { baseColor: "#2c3e50" }]
+                    scale: Qt.vector3d(0.08, 0.32, 0.35)
+                    position: Qt.vector3d(26, -2, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
                 }
-                Model {
-                    source: "#Cube"
-                    scale: Qt.vector3d(0.06, 0.06, 0.65)
-                    position: Qt.vector3d(0, -53, 40)
-                    materials: [ PrincipledMaterial { baseColor: "#15181b" }]
-                }
-            }
-            // Left Leg
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.28, 0.6, 0.28)
-                position: Qt.vector3d(-18, 30, 0)
-                materials: [ PrincipledMaterial { baseColor: "#1f242b" }]
-            }
-            // Right Leg
-            Model {
-                source: "#Cube"
-                scale: Qt.vector3d(0.28, 0.6, 0.28)
-                position: Qt.vector3d(18, 30, 0)
-                materials: [ PrincipledMaterial { baseColor: "#1f242b" }]
             }
 
-            // Sentinel muzzle flash
+            // --- 2. Heavy Armored Torso & Core Reactor ---
+            Node {
+                position: Qt.vector3d(0, 105, 0)
+
+                // Upper Chest Ballistic Carapace (Bright polished titanium plates)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.75, 0.52, 0.44)
+                    position: Qt.vector3d(0, 8, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.32
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+                    }]
+                }
+                // Core Plasma Reactor Housing
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.42, 0.42, 0.46)
+                    position: Qt.vector3d(0, 6, 2)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelCore
+                        metalness: 0.30
+                        roughness: 0.42
+                        emissiveFactor: Qt.vector3d(0.14, 0.12, 0.12)
+                    }]
+                }
+                // Glowing Reactor Exhaust Vent (Glows brighter when attacking)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.18, 0.08)
+                    position: Qt.vector3d(0, 6, 25)
+                    materials: [ PrincipledMaterial {
+                        baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff2200" : "#ff7700"
+                        lighting: PrincipledMaterial.NoLighting
+                    }]
+                }
+                // Abdominal Spinal Vertebrae & Power Conduits
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.42, 0.32, 0.32)
+                    position: Qt.vector3d(0, -28, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelCore
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+
+                // Left Heavy Shoulder Pauldron
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.32, 0.22, 0.45)
+                    position: Qt.vector3d(-46, 25, 0)
+                    eulerRotation: Qt.vector3d(0, 0, 15)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+                    }]
+                }
+                // Right Heavy Shoulder Pauldron
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.32, 0.22, 0.45)
+                    position: Qt.vector3d(46, 25, 0)
+                    eulerRotation: Qt.vector3d(0, 0, -15)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.12, 0.14, 0.16)
+                    }]
+                }
+            }
+
+            // --- 3. Left Arm (Tactical Stabilizer & Combat Claw) ---
+            Node {
+                position: Qt.vector3d(-48, 110, 0)
+                eulerRotation: Qt.vector3d(root.armSwingAngle, 0, 8)
+
+                // Upper Hydraulic Arm
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.20, 0.40, 0.20)
+                    position: Qt.vector3d(0, -18, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Elbow Servo Joint (Light titanium joint)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.12, 0.18)
+                    position: Qt.vector3d(0, -38, 0)
+                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                }
+                // Armored Forearm
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.38, 0.18)
+                    position: Qt.vector3d(0, -56, 4)
+                    eulerRotation: Qt.vector3d(-15, 0, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Tactical Combat Claw (Bright chrome finish)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.14, 0.16, 0.20)
+                    position: Qt.vector3d(0, -74, 8)
+                    materials: [ PrincipledMaterial { baseColor: "#8b9cb0"; metalness: 0.50; roughness: 0.30 }]
+                }
+            }
+
+            // --- 4. Right Arm with Heavy Plasma Assault Cannon ---
+            Node {
+                position: Qt.vector3d(48, 110, 0)
+                eulerRotation: Qt.vector3d(-65 - (root.enemyObj && root.enemyObj.isShooting ? 12 : 0), -5, -8)
+
+                // Upper Arm
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.20, 0.40, 0.20)
+                    position: Qt.vector3d(0, -18, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Elbow Servo
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.18, 0.12, 0.18)
+                    position: Qt.vector3d(0, -38, 0)
+                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                }
+                // Armored Forearm
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.20, 0.38, 0.20)
+                    position: Qt.vector3d(0, -56, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+
+                // Heavy Plasma Assault Cannon
+                Node {
+                    position: Qt.vector3d(2, -64, 16)
+
+                    // Cannon Receiver & Frame (Bright silver/titanium)
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.22, 0.28, 0.75)
+                        position: Qt.vector3d(0, 0, 10)
+                        materials: [ PrincipledMaterial {
+                            baseColorMap: texSentinelGun
+                            metalness: 0.35
+                            roughness: 0.38
+                            emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                        }]
+                    }
+                    // Glowing Plasma Energy Coils (Top Chamber)
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.14, 0.12, 0.32)
+                        position: Qt.vector3d(0, 14, 6)
+                        materials: [ PrincipledMaterial {
+                            baseColor: (root.enemyObj && root.enemyObj.isAttacking) ? "#ff3300" : "#ff7700"
+                            lighting: PrincipledMaterial.NoLighting
+                        }]
+                    }
+                    // Heavy Heat-Dissipation Barrel
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.14, 0.14, 0.55)
+                        position: Qt.vector3d(0, 0, 48)
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#627284"
+                            metalness: 0.50
+                            roughness: 0.30
+                        }]
+                    }
+                    // Muzzle Shroud / Flash Compensator
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.18, 0.18, 0.15)
+                        position: Qt.vector3d(0, 0, 72)
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#718296"
+                            metalness: 0.45
+                            roughness: 0.35
+                        }]
+                    }
+                    // High-Energy Muzzle Flash
+                    Model {
+                        source: "#Cube"
+                        scale: Qt.vector3d(0.22, 0.22, 0.22)
+                        position: Qt.vector3d(0, 0, 84)
+                        visible: root.enemyObj ? root.enemyObj.isShooting : false
+                        materials: [ PrincipledMaterial {
+                            baseColor: "#ffaa00"
+                            lighting: PrincipledMaterial.NoLighting
+                        }]
+                    }
+                }
+            }
+
+            // --- 5. Armored Pelvis & Bipedal Legs ---
+            // Pelvis
             Model {
                 source: "#Cube"
-                scale: Qt.vector3d(0.1, 0.1, 0.1)
-                position: Qt.vector3d(46, 50, 55)
-                visible: root.enemyObj ? root.enemyObj.isShooting : false
+                scale: Qt.vector3d(0.58, 0.20, 0.36)
+                position: Qt.vector3d(0, 62, 0)
                 materials: [ PrincipledMaterial {
-                    baseColor: "#ffaa00"
-                    lighting: PrincipledMaterial.NoLighting
+                    baseColorMap: texSentinelArmor
+                    metalness: 0.35
+                    roughness: 0.38
+                    emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
                 }]
+            }
+
+            // Left Leg (Swings with sentinelWalkPhase)
+            Node {
+                position: Qt.vector3d(-20, 56, 0)
+                eulerRotation: Qt.vector3d(root.legSwingAngle, 0, 0)
+
+                // Armored Thigh
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.24, 0.35, 0.24)
+                    position: Qt.vector3d(0, -16, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Knee Hydraulic Actuator
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.20, 0.10, 0.22)
+                    position: Qt.vector3d(0, -32, 2)
+                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                }
+                // Armored Shin & Calf Plate
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.22, 0.34, 0.22)
+                    position: Qt.vector3d(0, -48, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Magnetic Heavy Combat Boot (Bright titanium alloy)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.26, 0.12, 0.36)
+                    position: Qt.vector3d(0, -66, 6)
+                    materials: [ PrincipledMaterial { baseColor: "#6b7c93"; metalness: 0.45; roughness: 0.35 }]
+                }
+            }
+
+            // Right Leg (Swings counter-phase)
+            Node {
+                position: Qt.vector3d(20, 56, 0)
+                eulerRotation: Qt.vector3d(-root.legSwingAngle, 0, 0)
+
+                // Armored Thigh
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.24, 0.35, 0.24)
+                    position: Qt.vector3d(0, -16, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.40
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Knee Hydraulic Actuator
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.20, 0.10, 0.22)
+                    position: Qt.vector3d(0, -32, 2)
+                    materials: [ PrincipledMaterial { baseColor: "#5a687c"; metalness: 0.45; roughness: 0.40 }]
+                }
+                // Armored Shin & Calf Plate
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.22, 0.34, 0.22)
+                    position: Qt.vector3d(0, -48, 0)
+                    materials: [ PrincipledMaterial {
+                        baseColorMap: texSentinelArmor
+                        metalness: 0.35
+                        roughness: 0.38
+                        emissiveFactor: Qt.vector3d(0.10, 0.12, 0.14)
+                    }]
+                }
+                // Magnetic Heavy Combat Boot (Bright titanium alloy)
+                Model {
+                    source: "#Cube"
+                    scale: Qt.vector3d(0.26, 0.12, 0.36)
+                    position: Qt.vector3d(0, -66, 6)
+                    materials: [ PrincipledMaterial { baseColor: "#6b7c93"; metalness: 0.45; roughness: 0.35 }]
+                }
             }
         }
     }

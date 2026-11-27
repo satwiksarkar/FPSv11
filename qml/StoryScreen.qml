@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 
 /**
- * @brief StoryScreen.qml displays the Project VANGUARD narrative briefing.
+ * @brief StoryScreen.qml displays the Project VANGUARD narrative and mission briefing.
  * 
  * Displayed before each level and after campaign victory.
  * Halts active gameplay while the user reads the mission objectives.
@@ -27,8 +27,8 @@ Item {
     // Atmospheric subtle grid lines (retro terminal feel)
     Rectangle {
         anchors.centerIn: parent
-        width: Math.min(840, parent.width - 40)
-        height: Math.min(560, parent.height - 40)
+        width: Math.min(880, parent.width - 32)
+        height: Math.min(640, parent.height - 32)
         color: "#0c0e14"
         border.color: root.isWin ? "#2ecc71" : "#e67e22"
         border.width: 2
@@ -36,8 +36,8 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 36
-            spacing: 24
+            anchors.margins: 28
+            spacing: 16
 
             // Top Header: Terminal Classification
             Row {
@@ -52,9 +52,9 @@ Item {
                 }
 
                 Text {
-                    text: root.isWin ? "SYSTEM TRANSMISSION // OVERRIDE COMPLETE" : "SECURE TERMINAL // FOUNDRY SEVEN INTEL"
+                    text: root.isWin ? "SYSTEM TRANSMISSION // OVERRIDE COMPLETE" : "SECURE TERMINAL // MISSION OPERATIONAL DIRECTIVE"
                     color: root.isWin ? "#2ecc71" : "#f39c12"
-                    font.pixelSize: 13
+                    font.pixelSize: 12
                     font.bold: true
                     font.letterSpacing: 2
                 }
@@ -64,7 +64,7 @@ Item {
             Text {
                 text: root.title
                 color: "#ffffff"
-                font.pixelSize: 26
+                font.pixelSize: 24
                 font.bold: true
                 font.letterSpacing: 1
             }
@@ -76,61 +76,56 @@ Item {
                 color: "#282c37"
             }
 
-            // Mission Story Content
+            // Mission Story & Operational Instructions Content
             Flickable {
+                id: flickArea
                 width: parent.width
-                height: 240
+                height: parent.height - 180
                 contentWidth: width
-                contentHeight: storyContentText.paintedHeight
+                contentHeight: storyContentText.paintedHeight + 20
                 clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {
+                    active: true
+                    policy: ScrollBar.AsNeeded
+                }
 
                 Text {
                     id: storyContentText
-                    width: parent.width
+                    width: parent.width - 20
                     text: root.storyText
                     color: "#d0d4dc"
-                    font.pixelSize: 15
-                    lineHeight: 1.5
+                    font.pixelSize: 14
+                    lineHeight: 1.45
                     wrapMode: Text.WordWrap
                 }
             }
 
-            Item {
-                height: 8
-            }
-
-            // Bottom Continue Prompt (Pulsing / Blinking)
-            Rectangle {
+            // Bottom Continue Prompt Button
+            Button {
+                id: btnProceed
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: promptText.width + 36
-                height: 42
-                color: "#181b24"
-                border.color: root.isWin ? "#27ae60" : "#d35400"
-                border.width: 1
-
-                Text {
-                    id: promptText
-                    anchors.centerIn: parent
-                    text: "PRESS ENTER / CLICK TO PROCEED"
-                    color: root.isWin ? "#2ecc71" : "#f39c12"
+                width: 320
+                height: 44
+                focusPolicy: Qt.NoFocus
+                contentItem: Text {
+                    text: root.isWin ? "RETURN TO MAIN MENU [ENTER]" : "▶  BEGIN MISSION [ENTER]"
+                    color: root.isWin ? "#2ecc71" : (btnProceed.hovered ? "#ffffff" : "#f39c12")
                     font.pixelSize: 13
                     font.bold: true
-                    font.letterSpacing: 1
-
-                    SequentialAnimation on opacity {
-                        loops: Animation.Infinite
-                        NumberAnimation { to: 0.25; duration: 550; easing.type: Easing.InOutQuad }
-                        NumberAnimation { to: 1.0; duration: 550; easing.type: Easing.InOutQuad }
-                    }
+                    font.letterSpacing: 1.5
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                 }
+                background: Rectangle {
+                    color: btnProceed.down ? "#7e3c00" : (btnProceed.hovered ? "#d35400" : "#181b24")
+                    border.color: root.isWin ? "#2ecc71" : "#e67e22"
+                    border.width: 2
+                }
+                onClicked: root.continueRequested()
             }
         }
-    }
-
-    // Input handlers (Enter, Return, Space, or Mouse Click)
-    MouseArea {
-        anchors.fill: parent
-        onClicked: root.continueRequested()
     }
 
     Keys.onPressed: function(event) {

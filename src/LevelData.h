@@ -97,6 +97,8 @@ public:
     // Level 3 entity spawns & pickups
     static QList<QVector3D> getLevel3VentPositions();
     static QList<QVector3D> getLevel3PerimeterDroneSpawns();
+    static QList<QVector3D> getLevel3SentinelSpawns();
+    static QList<QVector3D> getLevel3DroneSpawns();
     static QList<PickupItemDef> getLevel3Pickups();
     static QVector3D getLevel3CoreCenter();
 

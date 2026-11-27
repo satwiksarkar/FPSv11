@@ -58,7 +58,9 @@ public:
     Q_INVOKABLE void setWorld(GameWorld *world);
     Q_INVOKABLE bool spawnDrone(const QVector3D &position);
     Q_INVOKABLE bool spawnDrone(const QVector3D &position, bool canShoot);
-    Q_INVOKABLE bool spawnSentinel(const QVector3D &position);
+    Q_INVOKABLE bool spawnSentinel(const QVector3D &position,
+                                   const QList<QVector3D> &patrolWaypoints = {},
+                                   const QRectF &leashBounds = QRectF());
     Q_INVOKABLE void updateAll(float deltaTime, const QVector3D &playerPos,
                                 Player *player, GameManager *gameManager);
     Q_INVOKABLE void clearAll();

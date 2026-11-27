@@ -304,11 +304,16 @@ bool LevelManager::checkExitReached(const QVector3D &playerPos, bool playerAlive
     if (!isExtractionAvailable()) {
         if (!m_exitDenyNotified) {
             m_exitDenyNotified = true;
-            QString msg = (m_currentLevel == 3)
-                ? QStringLiteral("[LOCKED] NEED 4 KEYS (%1/4) & OVERLOAD CORE (%2 VENTS LEFT)")
-                      .arg(collectedKeysCount())
-                      .arg(m_activeVentsRemaining)
-                : QStringLiteral("[LOCKED] NEED ALL 4 ACCESS KEYS (%1/4)").arg(collectedKeysCount());
+            QString msg;
+            if (m_currentLevel == 1 && m_puzzleManager && !m_puzzleManager->isPowerSolved()) {
+                msg = QStringLiteral("[POWER FAILURE] REPAIR ELECTRICAL WIRING IN SECTOR K4 TO ENERGIZE ELEVATOR");
+            } else if (m_currentLevel == 3) {
+                msg = QStringLiteral("[LOCKED] NEED 4 KEYS (%1/4) & OVERLOAD CORE (%2 VENTS LEFT)")
+                          .arg(collectedKeysCount())
+                          .arg(m_activeVentsRemaining);
+            } else {
+                msg = QStringLiteral("[LOCKED] NEED ALL 4 ACCESS KEYS (%1/4)").arg(collectedKeysCount());
+            }
             emit doorInteractionFeedback(msg, QStringLiteral("#e74c3c"));
         }
         return false;
@@ -523,6 +528,8 @@ int LevelManager::sentinelSpawnCount() const
 {
     if (m_currentLevel == 2) {
         return LevelData::getLevel2SentinelSpawns().size();
+    } else if (m_currentLevel == 3) {
+        return LevelData::getLevel3SentinelSpawns().size();
     }
     return 0;
 }
@@ -534,6 +541,11 @@ QVector3D LevelManager::sentinelSpawn(int index) const
         if (index >= 0 && index < list.size()) {
             return list[index];
         }
+    } else if (m_currentLevel == 3) {
+        auto list = LevelData::getLevel3SentinelSpawns();
+        if (index >= 0 && index < list.size()) {
+            return list[index];
+        }
     }
     return QVector3D(0.0f, 0.0f, 0.0f);
 }
@@ -542,6 +554,8 @@ int LevelManager::droneSpawnCount() const
 {
     if (m_currentLevel == 2) {
         return LevelData::getLevel2DroneSpawns().size();
+    } else if (m_currentLevel == 3) {
+        return LevelData::getLevel3DroneSpawns().size();
     }
     return 0;
 }
@@ -550,6 +564,11 @@ QVector3D LevelManager::droneSpawn(int index) const
 {
     if (m_currentLevel == 2) {
         auto list = LevelData::getLevel2DroneSpawns();
+        if (index >= 0 && index < list.size()) {
+            return list[index];
+        }
+    } else if (m_currentLevel == 3) {
+        auto list = LevelData::getLevel3DroneSpawns();
         if (index >= 0 && index < list.size()) {
             return list[index];
         }
@@ -1287,6 +1306,11 @@ bool LevelManager::isExtractionAvailable() const
     if (!hasAllKeys()) {
         return false;
     }
+    if (m_currentLevel == 1) {
+        if (m_puzzleManager && !m_puzzleManager->isPowerSolved()) {
+            return false;
+        }
+    }
     if (m_currentLevel == 3) {
         return m_bossCompleted && (m_activeVentsRemaining == 0);
     }
@@ -1848,17 +1872,7 @@ void LevelManager::checkStorageAmbush(const QVector3D &playerPos, EnemyManager *
         m_storageAmbushTriggered = true;
         emit storageAmbushTriggeredChanged();
         emit storageAmbushTriggered();
-        emit doorInteractionFeedback(QStringLiteral("STORAGE WAREHOUSE AMBUSH INITIATED!"), QStringLiteral("#e74c3c"));
-
-        if (enemyMgr) {
-            auto anchors = LevelData::getLevel1StorageAmbushAnchors();
-            if (!anchors.isEmpty()) {
-                // Balanced Storage Ambush: 1 Shock Drone, 1 Ranged Drone, 1 Sentinel
-                enemyMgr->spawnDrone(anchors[0] + QVector3D(-40.0f, 0, -30.0f), false);
-                enemyMgr->spawnDrone(anchors[1 % anchors.size()] + QVector3D(40.0f, 0, -30.0f), true);
-                enemyMgr->spawnSentinel(anchors[2 % anchors.size()]);
-            }
-        }
+        emit doorInteractionFeedback(QStringLiteral("STORAGE WAREHOUSE DEFENSES ALERTED!"), QStringLiteral("#e74c3c"));
     }
 }
 
@@ -1882,14 +1896,26 @@ void LevelManager::spawnLevel1DynamicEnemies(EnemyManager *enemyManager)
     }
 
     // Key 3 (Sentinel Patrol): Ensure two Sentinel robots ALWAYS guard Key 3 alcove while opening/patrolling
-    enemyManager->spawnSentinel(QVector3D(750.0f, 0.0f, 1150.0f));
-    enemyManager->spawnSentinel(QVector3D(950.0f, 0.0f, 750.0f));
+    QRectF k3Leash(450.0f, 550.0f, 1150.0f, 1250.0f);
+    enemyManager->spawnSentinel(QVector3D(750.0f, 0.0f, 1150.0f),
+                                { QVector3D(750.0f, 0.0f, 1150.0f), QVector3D(750.0f, 0.0f, 1550.0f),
+                                  QVector3D(1050.0f, 0.0f, 1550.0f), QVector3D(750.0f, 0.0f, 1550.0f) },
+                                k3Leash);
+    enemyManager->spawnSentinel(QVector3D(1350.0f, 0.0f, 1150.0f),
+                                { QVector3D(1350.0f, 0.0f, 1150.0f), QVector3D(1350.0f, 0.0f, 750.0f),
+                                  QVector3D(1050.0f, 0.0f, 750.0f), QVector3D(1350.0f, 0.0f, 750.0f) },
+                                k3Leash);
 
     // Storage Room (Warehouse): Max 2 Sentinels and Max 5 Drones in the storage room
-    enemyManager->spawnSentinel(QVector3D(2050.0f, 0.0f, 950.0f));
-    enemyManager->spawnSentinel(QVector3D(2650.0f, 0.0f, 950.0f));
+    QRectF storageLeash(1650.0f, 550.0f, 1500.0f, 900.0f);
+    enemyManager->spawnSentinel(QVector3D(2050.0f, 0.0f, 950.0f),
+                                { QVector3D(2050.0f, 0.0f, 950.0f), QVector3D(2050.0f, 0.0f, 1250.0f) },
+                                storageLeash);
+    enemyManager->spawnSentinel(QVector3D(2650.0f, 0.0f, 950.0f),
+                                { QVector3D(2650.0f, 0.0f, 950.0f), QVector3D(2650.0f, 0.0f, 1250.0f) },
+                                storageLeash);
 
-    int storageDroneCount = QRandomGenerator::global()->bounded(4, 6); // 4 or 5 drones (max 5)
+    int storageDroneCount = 5; // Exactly 5 drones (max 5)
     QList<QVector3D> storageAnchors = {
         QVector3D(1950.0f, 0.0f, 750.0f),
         QVector3D(2350.0f, 0.0f, 750.0f),
@@ -1912,9 +1938,8 @@ void LevelManager::spawnLevel1DynamicEnemies(EnemyManager *enemyManager)
     QList<int> indices;
     for (int i = 0; i < anchors.size(); ++i) {
         QVector3D anc = anchors[i];
-        // Exclude the 2 anchors directly at Key 3 since they are permanently assigned Sentinels above
-        if (qAbs(anc.x() - 750.0f) < 50.0f && qAbs(anc.z() - 1150.0f) < 50.0f) continue;
-        if (qAbs(anc.x() - 950.0f) < 50.0f && qAbs(anc.z() - 750.0f) < 50.0f) continue;
+        // Exclude all anchors in Sector K3 (cols 5..15, rows 6..17)
+        if (anc.x() >= 450.0f && anc.x() <= 1600.0f && anc.z() >= 550.0f && anc.z() <= 1800.0f) continue;
         // Exclude Key 1 chamber anchors since Key 1 has guaranteed 3-4 drones spawned above
         if (anc.x() < 1400.0f && anc.z() > 2700.0f && anc.z() < 3600.0f) continue;
         // Exclude Storage Room anchors (handled above)

@@ -8,6 +8,7 @@
 #include <QVector3D>
 #include <QList>
 #include <QPair>
+#include <QRectF>
 #include <QtQml/qqmlregistration.h>
 
 class GameWorld;
@@ -110,6 +111,11 @@ public:
     void reset();
     void respawn(const QVector3D &spawnPos);
 
+    // Patrol & Leashing (Key 3 Sentinel automatons)
+    void setPatrolWaypoints(const QList<QVector3D> &waypoints) { m_patrolWaypoints = waypoints; m_currentPatrolIndex = 0; }
+    void setLeashBounds(const QRectF &bounds) { m_leashBounds = bounds; m_isLeashed = !bounds.isNull(); }
+    QVector3D spawnPosition() const { return m_spawnPosition; }
+
 signals:
     void positionChanged(const QVector3D &newPos);
     void rotationChanged(float newRotY);
@@ -163,6 +169,13 @@ private:
     QVector3D m_lastSeenPlayerPos;
     float m_aimTimer;          // Time spent aiming before shooting
     float m_searchTimer;       // Time spent searching at last seen position
+
+    // Sentinel Patrol & Leashing
+    QVector3D m_spawnPosition;
+    QList<QVector3D> m_patrolWaypoints;
+    int m_currentPatrolIndex;
+    bool m_isLeashed;
+    QRectF m_leashBounds;
 
     // Shared timers
     float m_attackTimer;       // Cooldown between attacks/shots

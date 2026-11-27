@@ -40,7 +40,13 @@ qt_add_qml_module(FPSLabGame
         qml/CoolantControlPanel.qml
         qml/AdminClueDialog.qml
         qml/Minimap.qml
+        qml/IntroSlideshow.qml
     RESOURCES
+        vg_intro/vg1.png
+        vg_intro/vg2.png
+        vg_intro/vg3.png
+        vg_intro/vg4.png
+        vg_intro/vg5.png
         qml/dark_hallway.frag
         qml/dark_hallway.vert
         qml/dark_surface.frag
@@ -52,6 +58,18 @@ qt_add_qml_module(FPSLabGame
         assets/textures/exit_elevator.png
         assets/textures/ammo_box.png
         assets/textures/core_wall.png
+        assets/textures/container_red.png
+        assets/textures/container_blue.png
+        assets/textures/container_orange.png
+        assets/textures/container_green.png
+        assets/textures/wire_puzzle_bg.png
+        assets/textures/food_pack.png
+        assets/textures/bandage.png
+        assets/textures/medkit.png
+        assets/textures/sentinel_head.png
+        assets/textures/sentinel_armor.png
+        assets/textures/sentinel_core.png
+        assets/textures/sentinel_gun.png
         assets/sounds/gunshot.wav
         assets/sounds/plasma_shot.wav
         assets/sounds/reload.wav

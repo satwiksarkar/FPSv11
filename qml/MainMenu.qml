@@ -16,6 +16,7 @@ Item {
 
     signal startGameRequested()
     signal startLevelRequested(int level)
+    signal startPrologueRequested()
     signal exitRequested()
 
     property bool showInstructions: false
@@ -33,7 +34,7 @@ Item {
         id: menuCard
         anchors.centerIn: parent
         width: 440
-        height: 570
+        height: 620
         color: "#ea101216"
         border.color: "#e67e22" // Warm voxel orange border
         border.width: 2
@@ -42,7 +43,7 @@ Item {
         Column {
             anchors.fill: parent
             anchors.margins: 28
-            spacing: 12
+            spacing: 11
 
             // Title Banner
             Column {
@@ -100,6 +101,41 @@ Item {
                 }
                 onClicked: {
                     root.startLevelRequested(root.selectedLevel)
+                }
+            }
+
+            // Prologue Intro Slideshow Button
+            Button {
+                id: btnIntro
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 280
+                height: 40
+                focusPolicy: Qt.NoFocus
+                contentItem: Row {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: "🎬"
+                        font.pixelSize: 13
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: "PROLOGUE"
+                        color: btnIntro.hovered ? "#ffffff" : "#00f0ff"
+                        font.pixelSize: 12
+                        font.bold: true
+                        font.letterSpacing: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                background: Rectangle {
+                    color: btnIntro.hovered ? "#006677" : "#0f2229"
+                    border.color: "#00f0ff"
+                    border.width: 1
+                    radius: 0
+                }
+                onClicked: {
+                    root.startPrologueRequested()
                 }
             }
 

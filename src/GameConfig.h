@@ -68,7 +68,7 @@ namespace GameConfig {
     constexpr float SENTINEL_SHOOT_INTERVAL = 2.0f;   // 2.0s between burst shots
     constexpr int SENTINEL_DAMAGE = 15;               // 15 damage per hit on body
     constexpr float SENTINEL_ACCURACY = 0.60f;        // 60% accuracy
-    constexpr float SENTINEL_RANGE_TILES = 25.0f;     // Range ~25 tiles (2500 units)
+    constexpr float SENTINEL_RANGE_TILES = 13.0f;     // Tactical room-scale range ~13 tiles (1300 units)
 
     // === Boss: Cooling Vents & Mainframe ===
     constexpr int COOLING_VENT_HEALTH = 150;          // Health per cooling vent

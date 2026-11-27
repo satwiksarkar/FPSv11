@@ -71,9 +71,113 @@ Node {
     Texture {
         id: texAmmoBox
         source: "../assets/textures/ammo_box.png"
-        magFilter: Texture.Nearest
-        minFilter: Texture.Nearest
-        generateMipmaps: false
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    Texture {
+        id: texContainerRed
+        source: "../assets/textures/container_red.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    Texture {
+        id: texContainerBlue
+        source: "../assets/textures/container_blue.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    Texture {
+        id: texContainerOrange
+        source: "../assets/textures/container_orange.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    Texture {
+        id: texContainerGreen
+        source: "../assets/textures/container_green.png"
+        magFilter: Texture.Linear
+        minFilter: Texture.Linear
+        generateMipmaps: true
+    }
+
+    // ==================== 3D FLOATING OBJECTIVE ARROW COMPONENT ====================
+    component TaskArrow: Node {
+        id: arrowNode
+        property color arrowColor: "#00f0ff"
+        property real baseHeight: 0
+        property real bobDistance: 10
+        property real bobSpeed: 900
+        property bool active: true
+
+        visible: active
+
+        NumberAnimation on y {
+            from: arrowNode.baseHeight
+            to: arrowNode.baseHeight + arrowNode.bobDistance
+            duration: arrowNode.bobSpeed
+            loops: Animation.Infinite
+            running: arrowNode.visible
+            easing.type: Easing.InOutQuad
+        }
+
+        NumberAnimation on eulerRotation.y {
+            from: 0
+            to: 360
+            duration: 3500
+            loops: Animation.Infinite
+            running: arrowNode.visible
+        }
+
+        // Upper Shaft
+        Model {
+            position: Qt.vector3d(0, 16, 0)
+            source: "#Cylinder"
+            scale: Qt.vector3d(0.07, 0.22, 0.07)
+            materials: [
+                PrincipledMaterial {
+                    baseColor: arrowNode.arrowColor
+                    lighting: PrincipledMaterial.NoLighting
+                    emissiveFactor: Qt.vector3d(1.0, 1.0, 1.0)
+                }
+            ]
+        }
+
+        // Downward Pointing Cone Head
+        Model {
+            position: Qt.vector3d(0, 4, 0)
+            eulerRotation: Qt.vector3d(180, 0, 0)
+            source: "#Cone"
+            scale: Qt.vector3d(0.24, 0.20, 0.24)
+            materials: [
+                PrincipledMaterial {
+                    baseColor: arrowNode.arrowColor
+                    lighting: PrincipledMaterial.NoLighting
+                    emissiveFactor: Qt.vector3d(1.0, 1.0, 1.0)
+                }
+            ]
+        }
+
+        // Pulsing Holographic Ring
+        Model {
+            position: Qt.vector3d(0, -2, 0)
+            source: "#Cylinder"
+            scale: Qt.vector3d(0.32, 0.012, 0.32)
+            materials: [
+                PrincipledMaterial {
+                    baseColor: arrowNode.arrowColor
+                    lighting: PrincipledMaterial.NoLighting
+                    opacity: 0.6
+                }
+            ]
+        }
     }
 
     // ==================== INSTANCED VOXEL BLOCK TABLES ====================
@@ -240,25 +344,25 @@ Node {
         visible: root.levelManager && root.levelManager.currentLevel === 3
     }
 
-    // 4. Ammo Pickups (Tile 5, Height 1 block, styled ammo cache)
+    // 4. Ammo Pickups (Tile 5, Height 1 block, styled military ammo cache)
     TileMapInstancing {
         id: ammoInstancing
         levelManager: root.levelManager
         tileType: 5
         blockHeight: 1
-        baseColor: "#e67e22"
+        baseColor: "#ffffff"
     }
 
     Model {
         id: ammoModel
         source: "#Cube"
         instancing: ammoInstancing
-        scale: Qt.vector3d(0.45, 0.35, 0.45)
+        scale: Qt.vector3d(0.55, 0.38, 0.45)
         materials: [
             PrincipledMaterial {
                 baseColorMap: texAmmoBox
-                roughness: 0.6
-                metalness: 0.4
+                roughness: 0.45
+                metalness: 0.55
             }
         ]
     }
@@ -313,11 +417,18 @@ Node {
             scale: Qt.vector3d(5.0, 0.2, 48.0)
             materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
         }
-        // Northeast Sector Ceiling above Mixed Vault (X: 3300..4300, Z: 0..2400, Y=310)
+        // Northeast Sector Ceiling - North Corridor above Key Room 4 (X: 3300..4300, Z: 0..600, Y=310)
         Model {
-            position: Qt.vector3d(3800, 310, 1200)
+            position: Qt.vector3d(3800, 310, 300)
             source: "#Cube"
-            scale: Qt.vector3d(10.0, 0.2, 24.0)
+            scale: Qt.vector3d(10.0, 0.2, 6.0)
+            materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+        }
+        // Northeast Sector Ceiling - South Corridor below Key Room 4 (X: 3300..4300, Z: 1800..2400, Y=310)
+        Model {
+            position: Qt.vector3d(3800, 310, 2100)
+            source: "#Cube"
+            scale: Qt.vector3d(10.0, 0.2, 6.0)
             materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
         }
         // Southeast Border Ceiling below Shooting Gallery (X: 3300..4300, Z: 3600..4800, Y=310)
@@ -332,6 +443,18 @@ Node {
     // ==================== EXIT PLATFORM MARKER (TILES 4, 6 & 11) ====================
     Node {
         id: exitPlatformMarker
+
+        // Floating 3D Navigation Arrow over Freight Elevator Gate when all Level 1 objectives are met
+        TaskArrow {
+            id: arrowFreightElevator
+            position: Qt.vector3d(2350, 120, 500)
+            baseHeight: 120
+            arrowColor: "#2ecc71" // Emerald Green
+            active: root.levelManager && root.levelManager.currentLevel === 1 &&
+                    root.levelManager.collectedKeysCount >= 4 &&
+                    root.levelManager.circuitPuzzleCompleted
+        }
+
         visible: root.levelManager && (
                      root.levelManager.currentLevel === 1 ||
                      root.levelManager.currentLevel === 2 ||
@@ -764,6 +887,15 @@ Node {
                 }
             }
 
+            // Floating 3D Navigation Arrow over the Vault
+            TaskArrow {
+                id: arrowVault
+                position: Qt.vector3d(635, 230, 3150)
+                baseHeight: 230
+                arrowColor: "#f39c12" // Vibrant Gold
+                active: root.levelManager && root.levelManager.currentLevel === 1 && !root.levelManager.vaultUnlocked
+            }
+
             // --- Interactive Wall Terminal mounted on Front Face of Vault at (755, 115, 2980) ---
             Node {
                 id: vaultTerminalNode
@@ -1156,6 +1288,15 @@ Node {
                 }
             }
 
+            // Floating 3D Navigation Arrow directly over the Laser Cage Alcove at (4150, 215, 2650)
+            TaskArrow {
+                id: arrowLaserCage
+                position: Qt.vector3d(4150, 215, 2650)
+                baseHeight: 215
+                arrowColor: (!root.levelManager || root.levelManager.laserCageDisabled) ? "#00e5ff" : "#ff4757"
+                active: root.levelManager && root.levelManager.currentLevel === 1 && !root.levelManager.isKeyCollected(1)
+            }
+
             // 3 Shootable Glowing Power Targets hanging from Rafters (Y=380..420)
             Repeater3D {
                 model: (root.levelManager && root.levelManager.powerRelays) ? root.levelManager.powerRelays : []
@@ -1265,6 +1406,15 @@ Node {
         Node {
             id: sentinelPatrolGroup
 
+            // Floating 3D Navigation Arrow over Key 3 Pedestal
+            TaskArrow {
+                id: arrowKey3
+                position: Qt.vector3d(950, 50, 1150)
+                baseHeight: 50
+                arrowColor: "#00e5ff" // Neon Cyan
+                active: root.levelManager && root.levelManager.currentLevel === 1 && !root.levelManager.isKeyCollected(2)
+            }
+
             // Raised Keycard Pedestal holding Key 3 at (950, 0, 1150)
             Model {
                 position: Qt.vector3d(950, 15, 1150)
@@ -1331,6 +1481,76 @@ Node {
         // ==================== 5. KEY 4: MIXED VAULT (NORTHEAST) ====================
         Node {
             id: mixedVaultGroup
+
+            // --- Tall Enclosure Architecture for Key Room 4 (Ceiling Y=750, Height=7.5m) ---
+            // High Ceiling Slab (X: 3300..4400, Z: 600..1800, Y=750)
+            Model {
+                position: Qt.vector3d(3850, 750, 1200)
+                source: "#Cube"
+                scale: Qt.vector3d(11.2, 0.2, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#14171d"; roughness: 0.95 } ]
+            }
+
+            // Upper Perimeter Enclosing Walls (Y: 300 to 750, Height=450, Center Y=525)
+            // North Upper Wall (Z=600)
+            Model {
+                position: Qt.vector3d(3850, 525, 600)
+                source: "#Cube"
+                scale: Qt.vector3d(11.2, 4.5, 0.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // South Upper Wall (Z=1800)
+            Model {
+                position: Qt.vector3d(3850, 525, 1800)
+                source: "#Cube"
+                scale: Qt.vector3d(11.2, 4.5, 0.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // East Upper Wall (X=4400)
+            Model {
+                position: Qt.vector3d(4400, 525, 1200)
+                source: "#Cube"
+                scale: Qt.vector3d(0.2, 4.5, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+            // West Upper Wall Partition above 3m entrance doorway (X=3300)
+            Model {
+                position: Qt.vector3d(3300, 525, 1200)
+                source: "#Cube"
+                scale: Qt.vector3d(0.2, 4.5, 12.2)
+                materials: [ PrincipledMaterial { baseColor: "#1b2631"; roughness: 0.8; metalness: 0.3 } ]
+            }
+
+            // Overhead Industrial Steel Rafter Beams (Y=620)
+            Model {
+                position: Qt.vector3d(3850, 620, 950)
+                source: "#Cube"
+                scale: Qt.vector3d(11.0, 0.4, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
+            }
+            Model {
+                position: Qt.vector3d(3850, 620, 1450)
+                source: "#Cube"
+                scale: Qt.vector3d(11.0, 0.4, 0.4)
+                materials: [ PrincipledMaterial { baseColor: "#2c3e50"; roughness: 0.5; metalness: 0.8 } ]
+            }
+
+            // Floating 3D Navigation Arrow over the Wall-Mounted Electrical Breaker Panel
+            TaskArrow {
+                id: arrowElectricalWiring
+                position: Qt.vector3d(3650, 235, 620)
+                baseHeight: 235
+                arrowColor: "#f1c40f" // Electric Gold
+                active: root.levelManager && root.levelManager.currentLevel === 1 && !root.levelManager.circuitPuzzleCompleted
+            }
+            // Floating 3D Navigation Arrow over Key 4 Pedestal on Catwalk (appears when wiring is fixed)
+            TaskArrow {
+                id: arrowKey4Pedestal
+                position: Qt.vector3d(3850, 230, 1150)
+                baseHeight: 230
+                arrowColor: "#00e5ff" // Neon Cyan
+                active: root.levelManager && root.levelManager.currentLevel === 1 && root.levelManager.circuitPuzzleCompleted && !root.levelManager.isKeyCollected(3)
+            }
 
             // Elevated 2m Central Platform / Catwalk (Platform height: 200, Rows 10..12, Cols 37..39 -> X=3850, Z=1150)
             Model {
@@ -1417,17 +1637,17 @@ Node {
                     materials: [ PrincipledMaterial { baseColor: "#f39c12"; roughness: 0.4; metalness: 0.8 } ]
                 }
 
-                // Overhead Industrial Power Conduits Running Up to Ceiling
+                // Overhead Industrial Power Conduits Running Up to High Ceiling (Y=750)
                 Model {
-                    position: Qt.vector3d(-45, 120, 8)
+                    position: Qt.vector3d(-45, 300, 8)
                     source: "#Cylinder"
-                    scale: Qt.vector3d(0.08, 1.0, 0.08)
+                    scale: Qt.vector3d(0.08, 4.5, 0.08)
                     materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.5; metalness: 0.85 } ]
                 }
                 Model {
-                    position: Qt.vector3d(45, 120, 8)
+                    position: Qt.vector3d(45, 300, 8)
                     source: "#Cylinder"
-                    scale: Qt.vector3d(0.08, 1.0, 0.08)
+                    scale: Qt.vector3d(0.08, 4.5, 0.08)
                     materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.5; metalness: 0.85 } ]
                 }
 
@@ -1628,32 +1848,45 @@ Node {
         Node {
             id: storageAmbushGroup
 
-            // --- Industrial Cargo Shipping Containers with Corrugated Plating & Corner Framing ---
+            // --- Industrial Cargo Shipping Containers with Detailed Corrugation Textures & Hardware ---
             // 1. Red Heavy Cargo Container at (1950, 150, 850)
             Node {
                 position: Qt.vector3d(1950, 150, 850)
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.8, 3.0, 1.2)
-                    materials: [ PrincipledMaterial { baseColorMap: texSteelWall; baseColor: "#c0392b"; roughness: 0.45; metalness: 0.55 } ]
+                    materials: [ PrincipledMaterial { baseColorMap: texContainerRed; roughness: 0.40; metalness: 0.45 } ]
                 }
                 // Dark Corner Framing Rails
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, 145, 0)
+                    position: Qt.vector3d(0, 146, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, -145, 0)
+                    position: Qt.vector3d(0, -146, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
+                }
+                // Vertical Dual Door Lock Rods on Front Face (Z=61)
+                Model {
+                    position: Qt.vector3d(-20, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 2.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
+                }
+                Model {
+                    position: Qt.vector3d(20, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 2.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
                 }
             }
 
@@ -1663,24 +1896,37 @@ Node {
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.8, 3.0, 1.2)
-                    materials: [ PrincipledMaterial { baseColorMap: texSteelWall; baseColor: "#2980b9"; roughness: 0.45; metalness: 0.55 } ]
+                    materials: [ PrincipledMaterial { baseColorMap: texContainerBlue; roughness: 0.40; metalness: 0.45 } ]
                 }
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, 145, 0)
+                    position: Qt.vector3d(0, 146, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, -145, 0)
+                    position: Qt.vector3d(0, -146, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.84, 0.08, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
+                }
+                // Vertical Dual Door Lock Rods on Front Face (Z=61)
+                Model {
+                    position: Qt.vector3d(-20, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 2.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
+                }
+                Model {
+                    position: Qt.vector3d(20, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 2.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
                 }
             }
 
@@ -1690,24 +1936,31 @@ Node {
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.2, 2.0, 1.2)
-                    materials: [ PrincipledMaterial { baseColorMap: texSteelWall; baseColor: "#d35400"; roughness: 0.5; metalness: 0.5 } ]
+                    materials: [ PrincipledMaterial { baseColorMap: texContainerOrange; roughness: 0.45; metalness: 0.40 } ]
                 }
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, 96, 0)
+                    position: Qt.vector3d(0, 97, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, -96, 0)
+                    position: Qt.vector3d(0, -97, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
+                }
+                // Vertical Door Lock Rod on Front Face (Z=61)
+                Model {
+                    position: Qt.vector3d(0, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 1.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
                 }
             }
 
@@ -1717,24 +1970,31 @@ Node {
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.2, 2.0, 1.2)
-                    materials: [ PrincipledMaterial { baseColorMap: texSteelWall; baseColor: "#27ae60"; roughness: 0.5; metalness: 0.5 } ]
+                    materials: [ PrincipledMaterial { baseColorMap: texContainerGreen; roughness: 0.45; metalness: 0.40 } ]
                 }
                 Model {
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, 96, 0)
+                    position: Qt.vector3d(0, 97, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
                 }
                 Model {
-                    position: Qt.vector3d(0, -96, 0)
+                    position: Qt.vector3d(0, -97, 0)
                     source: "#Cube"
                     scale: Qt.vector3d(1.24, 0.06, 1.24)
-                    materials: [ PrincipledMaterial { baseColor: "#1a252f"; roughness: 0.4; metalness: 0.85 } ]
+                    materials: [ PrincipledMaterial { baseColor: "#11161d"; roughness: 0.35; metalness: 0.90 } ]
+                }
+                // Vertical Door Lock Rod on Front Face (Z=61)
+                Model {
+                    position: Qt.vector3d(0, 0, 61)
+                    source: "#Cylinder"
+                    scale: Qt.vector3d(0.04, 1.9, 0.04)
+                    materials: [ PrincipledMaterial { baseColor: "#c8d6e5"; roughness: 0.25; metalness: 0.95 } ]
                 }
             }
         }

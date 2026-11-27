@@ -152,7 +152,9 @@ bool EnemyManager::spawnDrone(const QVector3D &position, bool canShoot)
     return true;
 }
 
-bool EnemyManager::spawnSentinel(const QVector3D &position)
+bool EnemyManager::spawnSentinel(const QVector3D &position,
+                               const QList<QVector3D> &patrolWaypoints,
+                               const QRectF &leashBounds)
 {
     if (activeCount() >= GameConfig::MAX_ACTIVE_ENEMIES) {
         qDebug() << "[EnemyManager] Cannot spawn Sentinel: MAX_ACTIVE_ENEMIES reached (" << activeCount() << ")";
@@ -167,6 +169,8 @@ bool EnemyManager::spawnSentinel(const QVector3D &position)
 
     e->setWorld(m_world);
     e->respawn(position);
+    e->setPatrolWaypoints(patrolWaypoints);
+    e->setLeashBounds(leashBounds);
     emit enemySpawned(e);
     emit activeCountChanged(activeCount());
     return true;
