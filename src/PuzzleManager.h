@@ -37,6 +37,8 @@ class PuzzleManager : public QObject
     Q_PROPERTY(int solvedCount READ solvedCount NOTIFY puzzleStateChanged)
 
     // Riddle puzzle properties (Puzzle 1: Warehouse Riddle Terminal)
+    Q_PROPERTY(QString currentRiddleText READ currentRiddleText NOTIFY riddleStateChanged)
+    Q_PROPERTY(QStringList currentRiddleOptions READ currentRiddleOptions NOTIFY riddleStateChanged)
     Q_PROPERTY(int selectedRiddleOption READ selectedRiddleOption NOTIFY riddleStateChanged)
     Q_PROPERTY(QString riddleFeedback READ riddleFeedback NOTIFY riddleStateChanged)
 
@@ -106,6 +108,8 @@ public:
     // Getters
     bool isCraneSolved() const { return m_craneSolved; }
     bool isRiddleSolved() const { return m_craneSolved; }
+    QString currentRiddleText() const { return m_currentRiddleText; }
+    QStringList currentRiddleOptions() const { return m_currentRiddleOptions; }
     int selectedRiddleOption() const { return m_selectedRiddleOption; }
     QString riddleFeedback() const { return m_riddleFeedback; }
     bool isPowerSolved() const { return m_powerSolved; }
@@ -176,6 +180,7 @@ public:
     Q_INVOKABLE void selectRiddleOption(int index);
     Q_INVOKABLE bool submitRiddleAnswer();
     Q_INVOKABLE bool solveRiddle(int optionIndex);
+    Q_INVOKABLE void pickRandomRiddle();
 
     // ==================== CARGO MANIFEST PUZZLE API (Puzzle 1) ====================
     Q_INVOKABLE void assignManifest(int containerId, int bayId);
@@ -193,6 +198,8 @@ public:
     Q_INVOKABLE bool insertFuse();
     Q_INVOKABLE bool rotateCircuitTile(int tileIndex);
     Q_INVOKABLE void resetCircuit();
+    Q_INVOKABLE bool solveWiring();
+    Q_INVOKABLE void setPowerSolved(bool solved);
 
     // ==================== SECURITY KEYPAD & CLUES API (Puzzle 3) ====================
     Q_INVOKABLE void inspectClue(int clueIndex);
@@ -249,8 +256,18 @@ private:
     QString m_interactionPrompt;
 
     // Riddle puzzle state
+    struct RiddleEntry {
+        int id;
+        QString riddle;
+        QString answer;
+    };
+    QList<RiddleEntry> m_riddles;
+    QString m_currentRiddleText;
+    QStringList m_currentRiddleOptions;
+    int m_currentRiddleCorrectIndex;
     int m_selectedRiddleOption;
     QString m_riddleFeedback;
+    void loadRiddles();
 
     // Manifest verification state
     int m_manifestAlpha;

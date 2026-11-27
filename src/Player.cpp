@@ -338,11 +338,38 @@ void Player::update(float deltaTime)
     intendedPos.setY(intendedPos.y() + m_verticalVelocity * deltaTime);
 
     // Dynamic Multi-Height Floor & Ceiling queries
+    float curFloorY = 0.0f;
+    if (m_world && m_world->levelManager()) {
+        curFloorY = m_world->levelManager()->getFloorHeightAtWorldPos(m_position.x(), m_position.z());
+    }
+    float currentEffectiveY = std::max(m_position.y(), curFloorY);
+
     float floorY = 0.0f;
     float ceilY = 450.0f;
     if (m_world && m_world->levelManager()) {
         floorY = m_world->levelManager()->getFloorHeightAtWorldPos(intendedPos.x(), intendedPos.z());
         ceilY = m_world->levelManager()->getCeilingHeightAtWorldPos(intendedPos.x(), intendedPos.z());
+    }
+
+    // Step-up / Ledge climb restriction (max step-up height is 72.0f)
+    // Prevents player from climbing 2m catwalks or high ledges unless using stairs/steps
+    constexpr float MAX_STEP_HEIGHT = 72.0f;
+    if (floorY - currentEffectiveY > MAX_STEP_HEIGHT) {
+        // Test X and Z independently to allow smooth sliding along the ledge wall
+        float floorX = m_world->levelManager()->getFloorHeightAtWorldPos(intendedPos.x(), m_position.z());
+        if (floorX - currentEffectiveY > MAX_STEP_HEIGHT) {
+            intendedPos.setX(m_position.x());
+        }
+        float floorZ = m_world->levelManager()->getFloorHeightAtWorldPos(m_position.x(), intendedPos.z());
+        if (floorZ - currentEffectiveY > MAX_STEP_HEIGHT) {
+            intendedPos.setZ(m_position.z());
+        }
+        floorY = m_world->levelManager()->getFloorHeightAtWorldPos(intendedPos.x(), intendedPos.z());
+        if (floorY - currentEffectiveY > MAX_STEP_HEIGHT) {
+            intendedPos.setX(m_position.x());
+            intendedPos.setZ(m_position.z());
+            floorY = curFloorY;
+        }
     }
 
     // Floor collision

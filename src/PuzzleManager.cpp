@@ -1,6 +1,11 @@
 #include "PuzzleManager.h"
 #include <QDebug>
 #include <QtMath>
+#include <QFile>
+#include <QTextStream>
+#include <QDir>
+#include <QCoreApplication>
+#include <QRandomGenerator>
 #include <queue>
 
 namespace {
@@ -51,12 +56,13 @@ PuzzleManager::PuzzleManager(QObject *parent)
     , m_level1Variant(1)
     , m_activePuzzle(0)
     , m_targetPuzzleId(0)
+    , m_currentRiddleCorrectIndex(0)
     , m_selectedRiddleOption(-1)
     , m_manifestAlpha(0)
     , m_manifestBeta(0)
     , m_manifestGamma(0)
-    , m_fuseCollected(false)
-    , m_fuseInserted(false)
+    , m_fuseCollected(true)
+    , m_fuseInserted(true)
     , m_clue1Found(false)
     , m_clue2Found(false)
     , m_clue3Found(false)
@@ -176,11 +182,34 @@ bool PuzzleManager::isPositionBlockedByBarrier(float x, float z) const
 
 int PuzzleManager::findTargetInteractable(const QVector3D &cameraPos, const QVector3D &lookDir, int currentLevel) const
 {
-    Q_UNUSED(cameraPos);
-    Q_UNUSED(lookDir);
-    Q_UNUSED(currentLevel);
-    // In Level 1 Fabrication Floors, puzzles are the 3 shootable power relays and exit keypad.
-    // Legacy modal puzzles (Coolant Console, Shipping Manifest, Archive Clues) are deactivated.
+    if (currentLevel != 1) {
+        return PuzzleNone;
+    }
+
+    // Key 1 Vault Sphinx Riddle Terminal mounted on Vault Front Face at (755.0f, 115.0f, 2980.0f)
+    QVector3D terminalPos(755.0f, 115.0f, 2980.0f);
+    QVector3D toTerminal = terminalPos - cameraPos;
+    float dist = toTerminal.length();
+    if (dist <= 260.0f) {
+        QVector3D normDir = lookDir.normalized();
+        float dot = QVector3D::dotProduct(normDir, toTerminal.normalized());
+        if (dot > 0.55f) {
+            return PuzzleCrane;
+        }
+    }
+
+    // Sector K4 Wall-Mounted Electrical Switchboard & Breaker Panel at (3650.0f, 135.0f, 615.0f)
+    QVector3D wiringPos(3650.0f, 135.0f, 615.0f);
+    QVector3D toWiring = wiringPos - cameraPos;
+    float distWiring = toWiring.length();
+    if (distWiring <= 260.0f) {
+        QVector3D normDir = lookDir.normalized();
+        float dot = QVector3D::dotProduct(normDir, toWiring.normalized());
+        if (dot > 0.45f) {
+            return PuzzlePower;
+        }
+    }
+
     return PuzzleNone;
 }
 
@@ -214,36 +243,12 @@ void PuzzleManager::updateInteraction(float deltaTime,
 
         switch (m_targetPuzzleId) {
         case PuzzleCrane:
-            m_interactionPrompt = m_craneSolved ? QStringLiteral("[E] SECURITY RIDDLE [SOLVED]")
-                                                : QStringLiteral("[E] ACCESS SECURITY RIDDLE TERMINAL");
-            break;
-        case PuzzleManifestClue:
-            m_interactionPrompt = QStringLiteral("[E] READ LOGISTICS MEMO #402-V (RIDDLE CLUE)");
+            m_interactionPrompt = m_craneSolved ? QStringLiteral("[E] VAULT TERMINAL [UNLOCKED]")
+                                                : QStringLiteral("[E] ACCESS VAULT TERMINAL");
             break;
         case PuzzlePower:
-            m_interactionPrompt = m_powerSolved ? QStringLiteral("[E] POWER ROUTING [ONLINE]")
-                                                : QStringLiteral("[E] ACCESS POWER ROUTING TERMINAL");
-            break;
-        case PuzzleResearchFuse:
-            m_interactionPrompt = m_fuseCollected ? QStringLiteral("200A FUSE [ACQUIRED]")
-                                                  : QStringLiteral("[E] TAKE 200A CERAMIC FUSE");
-            break;
-        case PuzzleSecurity:
-            m_interactionPrompt = m_securitySolved ? QStringLiteral("[E] SECURITY TERMINAL [UNLOCKED]")
-                                                   : QStringLiteral("[E] ENTER VAULT PASSCODE");
-            break;
-        case PuzzleAdminClue:
-            m_interactionPrompt = QStringLiteral("[E] READ RECEPTION MEMO (CLUE 1/3)");
-            break;
-        case PuzzleAdminClue2:
-            m_interactionPrompt = QStringLiteral("[E] READ SUPERVISOR DIRECTIVE (CLUE 2/3)");
-            break;
-        case PuzzleAdminClue3:
-            m_interactionPrompt = QStringLiteral("[E] ACCESS ARCHIVE LOG (CLUE 3/3)");
-            break;
-        case PuzzleCoolant:
-            m_interactionPrompt = m_coolantSolved ? QStringLiteral("[E] COOLANT MANIFOLD [STABILIZED]")
-                                                  : QStringLiteral("[E] REGULATE COOLANT VALVES");
+            m_interactionPrompt = m_powerSolved ? QStringLiteral("[E] ELECTRICAL SWITCHBOARD [REPAIRED]")
+                                                : QStringLiteral("[E] ACCESS ELECTRICAL SWITCHBOARD");
             break;
         default:
             m_interactionPrompt.clear();
@@ -309,6 +314,125 @@ void PuzzleManager::closeActivePuzzle()
 
 // ==================== RIDDLE & CARGO PUZZLE IMPLEMENTATION (Puzzle 1) ====================
 
+void PuzzleManager::loadRiddles()
+{
+    m_riddles.clear();
+
+    QStringList searchPaths = {
+        QDir::current().filePath(QStringLiteral("vanguard_riddles.csv")),
+        QCoreApplication::applicationDirPath() + QStringLiteral("/vanguard_riddles.csv"),
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("../vanguard_riddles.csv")),
+        QDir::current().filePath(QStringLiteral("../vanguard_riddles.csv"))
+    };
+
+    QFile file;
+    for (const QString &path : searchPaths) {
+        if (QFile::exists(path)) {
+            file.setFileName(path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                qDebug() << "[PuzzleManager] Loaded riddles from:" << path;
+                break;
+            }
+        }
+    }
+
+    if (file.isOpen()) {
+        QTextStream in(&file);
+        bool headerSkipped = false;
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (line.isEmpty()) continue;
+            if (!headerSkipped) {
+                headerSkipped = true;
+                continue;
+            }
+            QStringList tokens;
+            bool inQuotes = false;
+            QString currentToken;
+            for (int i = 0; i < line.length(); ++i) {
+                QChar c = line[i];
+                if (c == QLatin1Char('"')) {
+                    inQuotes = !inQuotes;
+                } else if (c == QLatin1Char(',') && !inQuotes) {
+                    tokens.append(currentToken.trimmed());
+                    currentToken.clear();
+                } else {
+                    currentToken.append(c);
+                }
+            }
+            tokens.append(currentToken.trimmed());
+
+            if (tokens.size() >= 3) {
+                RiddleEntry entry;
+                entry.id = tokens[0].toInt();
+                entry.riddle = tokens[1];
+                entry.answer = tokens[2];
+                m_riddles.append(entry);
+            }
+        }
+        file.close();
+    }
+
+    if (m_riddles.isEmpty()) {
+        m_riddles = {
+            { 1, QStringLiteral("I have keys but open no locks. I have space but no room. You can enter, but cannot go inside. What am I?"), QStringLiteral("Keyboard") },
+            { 2, QStringLiteral("The more you take from me, the bigger I become. What am I?"), QStringLiteral("A hole") },
+            { 3, QStringLiteral("I speak without a mouth and hear without ears. I have no body, but come alive with sound. What am I?"), QStringLiteral("Echo") },
+            { 4, QStringLiteral("I have hands but cannot clap. I have a face but cannot smile. What am I?"), QStringLiteral("Clock") },
+            { 5, QStringLiteral("I get wetter the more I dry. What am I?"), QStringLiteral("Towel") },
+            { 6, QStringLiteral("What has many teeth but cannot bite?"), QStringLiteral("Comb") },
+            { 7, QStringLiteral("What can travel around the world while staying in one corner?"), QStringLiteral("Stamp") },
+            { 8, QStringLiteral("I have cities but no houses, forests but no trees, and rivers but no water. What am I?"), QStringLiteral("Map") },
+            { 9, QStringLiteral("What belongs to you but other people use it more than you do?"), QStringLiteral("Your name") },
+            { 10, QStringLiteral("The more there is of me, the less you can see. What am I?"), QStringLiteral("Darkness") }
+        };
+    }
+}
+
+void PuzzleManager::pickRandomRiddle()
+{
+    if (m_riddles.isEmpty()) {
+        loadRiddles();
+    }
+    if (m_riddles.isEmpty()) return;
+
+    int rIdx = QRandomGenerator::global()->bounded(static_cast<int>(m_riddles.size()));
+    const RiddleEntry &chosen = m_riddles[rIdx];
+    m_currentRiddleText = chosen.riddle;
+
+    QStringList otherAnswers;
+    for (int i = 0; i < m_riddles.size(); ++i) {
+        if (i != rIdx) {
+            otherAnswers.append(m_riddles[i].answer);
+        }
+    }
+    for (int i = otherAnswers.size() - 1; i > 0; --i) {
+        int j = QRandomGenerator::global()->bounded(i + 1);
+        otherAnswers.swapItemsAt(i, j);
+    }
+
+    QStringList options;
+    options.append(chosen.answer);
+    for (int i = 0; i < 3 && i < otherAnswers.size(); ++i) {
+        options.append(otherAnswers[i]);
+    }
+
+    for (int i = options.size() - 1; i > 0; --i) {
+        int j = QRandomGenerator::global()->bounded(i + 1);
+        options.swapItemsAt(i, j);
+    }
+
+    m_currentRiddleOptions = options;
+    m_currentRiddleCorrectIndex = options.indexOf(chosen.answer);
+    m_selectedRiddleOption = -1;
+    m_riddleFeedback.clear();
+
+    qDebug() << "[PuzzleManager] Picked riddle #" << chosen.id << ":" << chosen.riddle
+             << "Answer:" << chosen.answer << "Correct Index:" << m_currentRiddleCorrectIndex;
+
+    emit riddleStateChanged();
+}
+
 void PuzzleManager::selectRiddleOption(int index)
 {
     m_selectedRiddleOption = index;
@@ -318,32 +442,26 @@ void PuzzleManager::selectRiddleOption(int index)
 
 bool PuzzleManager::solveRiddle(int optionIndex)
 {
-    // Option 0: "THE DRIVE GEAR" (Matches Logistics Memo #402-V)
-    if (optionIndex == 0) {
+    if (optionIndex < 0 || optionIndex >= m_currentRiddleOptions.size()) {
+        m_riddleFeedback = QStringLiteral("ERROR: SELECT A RESPONSE BEFORE SUBMITTING.");
+        emit riddleStateChanged();
+        return false;
+    }
+
+    if (optionIndex == m_currentRiddleCorrectIndex) {
         m_craneSolved = true;
-        m_selectedRiddleOption = 0;
-        m_bays[3] = 1;
-        m_bays[1] = 2;
-        m_bays[5] = 3;
-        m_manifestAlpha = 3;
-        m_manifestBeta = 1;
-        m_manifestGamma = 5;
-        m_riddleFeedback = QStringLiteral("RIDDLE SOLVED: 'THE DRIVE GEAR' confirmed. K1 chamber barrier disengaged.");
+        m_riddleFeedback = QStringLiteral("ACCESS GRANTED: IDENTITY CONFIRMED. DISENGAGING VAULT DOOR...");
         emit craneSolvedChanged();
         emit riddleSolvedChanged();
-        emit craneStateChanged();
         emit riddleStateChanged();
-        emit manifestChanged();
-        emit puzzleStateChanged();
-        emit puzzleCompleted(PuzzleCrane, QStringLiteral("Warehouse Security Riddle"));
-        emit barrierOpened(1);
-        emit puzzleFeedback(QStringLiteral("RIDDLE SOLVED: Key 1 chamber barrier unlocked!"), QStringLiteral("#2ecc71"));
+        emit puzzleCompleted(PuzzleCrane, QStringLiteral("Vault Security Riddle"));
+        emit puzzleFeedback(QStringLiteral("VAULT ACCESS GRANTED: Vault Door Disengaged!"), QStringLiteral("#2ecc71"));
         return true;
     }
 
-    m_riddleFeedback = QStringLiteral("ACCESS DENIED: Incorrect identity. Review logistics memo #402-V in warehouse office.");
+    m_riddleFeedback = QStringLiteral("ACCESS DENIED: INCORRECT RESPONSE. RE-EVALUATE COGNITIVE QUERY.");
     emit riddleStateChanged();
-    emit puzzleFeedback(QStringLiteral("INCORRECT RIDDLE RESPONSE — ACCESS DENIED"), QStringLiteral("#e74c3c"));
+    emit puzzleFeedback(QStringLiteral("ACCESS DENIED — INCORRECT RESPONSE"), QStringLiteral("#e74c3c"));
     return false;
 }
 
@@ -527,9 +645,9 @@ bool PuzzleManager::rotateCircuitTile(int tileIndex)
             m_powerSolved = true;
             emit powerSolvedChanged();
             emit puzzleStateChanged();
-            emit puzzleCompleted(PuzzlePower, QStringLiteral("RESEARCH POWER ROUTING"));
+            emit puzzleCompleted(PuzzlePower, QStringLiteral("ELECTRICAL WIRING REPAIRED"));
             emit barrierOpened(2);
-            emit puzzleFeedback(QStringLiteral("CONTAINMENT FIELD DISENGAGED — ACCESS KEY C UNLOCKED"), QStringLiteral("#00e5ff"));
+            emit puzzleFeedback(QStringLiteral("ELECTRICAL WIRING RESTORED — BULKHEAD CARD READER ONLINE!"), QStringLiteral("#2ecc71"));
         }
     }
 
@@ -604,6 +722,34 @@ void PuzzleManager::resetCircuit()
 
     updateCircuitPowerFlow();
     emit circuitStateChanged();
+}
+
+bool PuzzleManager::solveWiring()
+{
+    if (!m_powerSolved) {
+        m_powerSolved = true;
+        emit powerSolvedChanged();
+        emit puzzleStateChanged();
+        emit puzzleCompleted(PuzzlePower, QStringLiteral("ELECTRICAL WIRING RESTORED"));
+        emit barrierOpened(2);
+        emit puzzleFeedback(QStringLiteral("ELECTRICAL WIRING RESTORED — BULKHEAD CARD READER ONLINE!"), QStringLiteral("#2ecc71"));
+        return true;
+    }
+    return true;
+}
+
+void PuzzleManager::setPowerSolved(bool solved)
+{
+    if (m_powerSolved != solved) {
+        m_powerSolved = solved;
+        emit powerSolvedChanged();
+        emit puzzleStateChanged();
+        if (solved) {
+            emit puzzleCompleted(PuzzlePower, QStringLiteral("ELECTRICAL WIRING RESTORED"));
+            emit barrierOpened(2);
+            emit puzzleFeedback(QStringLiteral("ELECTRICAL WIRING RESTORED — BULKHEAD CARD READER ONLINE!"), QStringLiteral("#2ecc71"));
+        }
+    }
 }
 
 // ==================== SECURITY KEYPAD IMPLEMENTATION ====================
@@ -744,6 +890,7 @@ void PuzzleManager::resetAllPuzzles()
 
     m_selectedRiddleOption = -1;
     m_riddleFeedback.clear();
+    pickRandomRiddle();
     resetManifest();
     resetCrane();
     m_fuseCollected = false;

@@ -1,10 +1,64 @@
 #include "CollisionSystem.h"
 #include "LevelManager.h"
+#include "PuzzleManager.h"
 #include "GameConfig.h"
 #include <QtMath>
 #include <algorithm>
 #include <cmath>
 #include <QDebug>
+
+static QList<AABB> getLevelObstacles(const LevelManager *lm)
+{
+    QList<AABB> obs;
+    if (!lm || lm->currentLevel() != 1) return obs;
+
+    // 1. Key 1 Armored Wall Vault Enclosure
+    // West Back Wall: position (520, 110, 3150), scale (0.2, 2.2, 2.2) -> X: [510, 530], Z: [3040, 3260]
+    obs.append({ QVector3D(510.0f, 0.0f, 3040.0f), QVector3D(530.0f, 220.0f, 3260.0f), QStringLiteral("VaultWest") });
+    // North Vault Wall: position (635, 110, 3050), scale (2.1, 2.2, 0.2) -> X: [530, 740], Z: [3040, 3060]
+    obs.append({ QVector3D(530.0f, 0.0f, 3040.0f), QVector3D(740.0f, 220.0f, 3060.0f), QStringLiteral("VaultNorth") });
+    // South Vault Wall: position (635, 110, 3250), scale (2.1, 2.2, 0.2) -> X: [530, 740], Z: [3240, 3260]
+    obs.append({ QVector3D(530.0f, 0.0f, 3240.0f), QVector3D(740.0f, 220.0f, 3260.0f), QStringLiteral("VaultSouth") });
+
+    // Front Sliding Vault Door at X=740
+    bool riddleSolved = false;
+    if (lm->puzzleManager()) {
+        riddleSolved = lm->puzzleManager()->isRiddleSolved();
+    }
+    if (!riddleSolved) {
+        // Closed door blocks entrance Z: 3060..3240
+        obs.append({ QVector3D(725.0f, 0.0f, 3060.0f), QVector3D(755.0f, 220.0f, 3240.0f), QStringLiteral("VaultDoorClosed") });
+    } else {
+        // Open door slid south to Z: 3270..3450
+        obs.append({ QVector3D(725.0f, 0.0f, 3270.0f), QVector3D(755.0f, 220.0f, 3450.0f), QStringLiteral("VaultDoorOpen") });
+    }
+
+    // 2. Key 2 Shooting Gallery Waist-High Barricades (Height: 0..120)
+    // Row 1 (Z=2850)
+    obs.append({ QVector3D(3470.0f, 0.0f, 2830.0f), QVector3D(3630.0f, 120.0f, 2870.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(3770.0f, 0.0f, 2830.0f), QVector3D(3930.0f, 120.0f, 2870.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(4080.0f, 0.0f, 2830.0f), QVector3D(4220.0f, 120.0f, 2870.0f), QStringLiteral("Barricade") });
+    // Row 2 (Z=3150)
+    obs.append({ QVector3D(3370.0f, 0.0f, 3130.0f), QVector3D(3530.0f, 120.0f, 3170.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(3670.0f, 0.0f, 3130.0f), QVector3D(3830.0f, 120.0f, 3170.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(3970.0f, 0.0f, 3130.0f), QVector3D(4130.0f, 120.0f, 3170.0f), QStringLiteral("Barricade") });
+    // Row 3 (Z=3450)
+    obs.append({ QVector3D(3470.0f, 0.0f, 3430.0f), QVector3D(3630.0f, 120.0f, 3470.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(3770.0f, 0.0f, 3430.0f), QVector3D(3930.0f, 120.0f, 3470.0f), QStringLiteral("Barricade") });
+    obs.append({ QVector3D(4080.0f, 0.0f, 3430.0f), QVector3D(4220.0f, 120.0f, 3470.0f), QStringLiteral("Barricade") });
+
+    // 3. Storage Room Industrial Cargo Shipping Containers
+    // Red Tall Container: position (1950, 150, 850), scale (1.8, 3.0, 1.2) -> X: [1860, 2040], Y: [0, 300], Z: [790, 910]
+    obs.append({ QVector3D(1860.0f, 0.0f, 790.0f), QVector3D(2040.0f, 300.0f, 910.0f), QStringLiteral("StorageRedContainer") });
+    // Blue Tall Container: position (2750, 150, 850), scale (1.8, 3.0, 1.2) -> X: [2660, 2840], Y: [0, 300], Z: [790, 910]
+    obs.append({ QVector3D(2660.0f, 0.0f, 790.0f), QVector3D(2840.0f, 300.0f, 910.0f), QStringLiteral("StorageBlueContainer") });
+    // Orange Medium Container: position (2150, 100, 1150), scale (1.2, 2.0, 1.2) -> X: [2090, 2210], Y: [0, 200], Z: [1090, 1210]
+    obs.append({ QVector3D(2090.0f, 0.0f, 1090.0f), QVector3D(2210.0f, 200.0f, 1210.0f), QStringLiteral("StorageOrangeContainer") });
+    // Green Medium Container: position (2550, 100, 1150), scale (1.2, 2.0, 1.2) -> X: [2490, 2610], Y: [0, 200], Z: [1090, 1210]
+    obs.append({ QVector3D(2490.0f, 0.0f, 1090.0f), QVector3D(2610.0f, 200.0f, 1210.0f), QStringLiteral("StorageGreenContainer") });
+
+    return obs;
+}
 
 CollisionSystem::CollisionSystem(QObject *parent)
     : QObject(parent)
@@ -74,6 +128,7 @@ QVector3D CollisionSystem::resolveMovement(const QVector3D &currentPos, const QV
         float blockSize = m_levelManager->blockSize();
         int mapW = m_levelManager->mapWidth();
         int mapH = m_levelManager->mapHeight();
+        QList<AABB> levelObstacles = getLevelObstacles(m_levelManager);
 
         for (int step = 0; step < steps; ++step) {
             // 1. Resolve X axis movement independently (allows smooth sliding along Z walls)
@@ -110,6 +165,25 @@ QVector3D CollisionSystem::resolveMovement(const QVector3D &currentPos, const QV
                     }
                 }
             }
+
+            for (const auto &box : levelObstacles) {
+                if (targetPos.y() < box.max.y() && (targetPos.y() + 180.0f) > box.min.y()) {
+                    float cX = std::clamp(nextX, box.min.x(), box.max.x());
+                    float cZ = std::clamp(currentZ, box.min.z(), box.max.z());
+                    float dx = nextX - cX;
+                    float dz = currentZ - cZ;
+                    float distSq = dx * dx + dz * dz;
+                    if (distSq < radius * radius) {
+                        if (distSq > 1e-6f) {
+                            float d = std::sqrt(distSq);
+                            float pen = radius - d;
+                            nextX += (dx / d) * pen;
+                        } else {
+                            nextX = (stepDelta.x() >= 0.0f) ? (box.min.x() - radius - 0.1f) : (box.max.x() + radius + 0.1f);
+                        }
+                    }
+                }
+            }
             pos.setX(nextX);
 
             // 2. Resolve Z axis movement independently (allows smooth sliding along X walls)
@@ -142,6 +216,25 @@ QVector3D CollisionSystem::resolveMovement(const QVector3D &currentPos, const QV
                             } else {
                                 nextZ = (stepDelta.z() >= 0.0f) ? (bMinZ - radius - 0.1f) : (bMaxZ + radius + 0.1f);
                             }
+                        }
+                    }
+                }
+            }
+
+            for (const auto &box : levelObstacles) {
+                if (targetPos.y() < box.max.y() && (targetPos.y() + 180.0f) > box.min.y()) {
+                    float cX = std::clamp(currentX, box.min.x(), box.max.x());
+                    float cZ = std::clamp(nextZ, box.min.z(), box.max.z());
+                    float dx = currentX - cX;
+                    float dz = nextZ - cZ;
+                    float distSq = dx * dx + dz * dz;
+                    if (distSq < radius * radius) {
+                        if (distSq > 1e-6f) {
+                            float d = std::sqrt(distSq);
+                            float pen = radius - d;
+                            nextZ += (dz / d) * pen;
+                        } else {
+                            nextZ = (stepDelta.z() >= 0.0f) ? (box.min.z() - radius - 0.1f) : (box.max.z() + radius + 0.1f);
                         }
                     }
                 }
@@ -339,18 +432,38 @@ bool CollisionSystem::intersectRayBox(const QVector3D &origin, const QVector3D &
 
 bool CollisionSystem::raycast(const QVector3D &origin, const QVector3D &direction, float maxDist, float &outDist, QString &outTag) const
 {
+    float nearestDist = maxDist;
+    bool hitAny = false;
+
     if (m_levelManager) {
         QVector3D hitPos;
         int hitTile = 0;
-        if (raycastDDA(m_levelManager, origin, direction, maxDist, outDist, hitPos, hitTile)) {
+        float ddaDist = maxDist;
+        if (raycastDDA(m_levelManager, origin, direction, maxDist, ddaDist, hitPos, hitTile)) {
+            nearestDist = ddaDist;
             outTag = (hitTile == TileCode::Crate) ? QStringLiteral("Crate") : QStringLiteral("Wall");
+            hitAny = true;
+        }
+
+        // Also test rays against custom Level obstacles (vault walls, closed door, barricades)
+        QList<AABB> levelObstacles = getLevelObstacles(m_levelManager);
+        for (const auto &box : levelObstacles) {
+            float d = 0.0f;
+            if (intersectRayBox(origin, direction, box.min, box.max, d)) {
+                if (d < nearestDist && d > 0.0f) {
+                    nearestDist = d;
+                    outTag = box.tag;
+                    hitAny = true;
+                }
+            }
+        }
+
+        if (hitAny) {
+            outDist = nearestDist;
             return true;
         }
         return false;
     }
-
-    float nearestDist = maxDist;
-    bool hitAny = false;
 
     for (const auto &box : m_colliders) {
         // If ray origin is inside a solid collider, the ray is immediately blocked at distance 0

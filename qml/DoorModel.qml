@@ -50,112 +50,75 @@ Node {
 
     readonly property var effectivePocketTex: root.pocketTexture ? root.pocketTexture : texDefaultPocket
 
-    // ==================== 1. RECESSED POCKET WALL HOUSINGS ====================
-    // Left Pocket (X in [-150, -50]): hollow Z cavity [-14, +14] for left leaf
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(-100, 150, 32)
-        scale: Qt.vector3d(1.0, 3.0, 0.36)
-        materials: [ PrincipledMaterial { baseColorMap: root.effectivePocketTex; baseColor: "#d5dce6"; roughness: 0.85; metalness: 0.3 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(-100, 150, -32)
-        scale: Qt.vector3d(1.0, 3.0, 0.36)
-        materials: [ PrincipledMaterial { baseColorMap: root.effectivePocketTex; baseColor: "#d5dce6"; roughness: 0.85; metalness: 0.3 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(-148, 150, 0)
-        scale: Qt.vector3d(0.04, 3.0, 0.28)
-        materials: [ PrincipledMaterial { baseColor: "#1f2730"; roughness: 0.6; metalness: 0.7 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(-100, 294, 0)
-        scale: Qt.vector3d(1.0, 0.12, 0.28)
-        materials: [ PrincipledMaterial { baseColor: "#26303c"; roughness: 0.6; metalness: 0.6 } ]
-    }
-
-    // Right Pocket (X in [+50, +150]): hollow Z cavity [-14, +14] for right leaf
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(100, 150, 32)
-        scale: Qt.vector3d(1.0, 3.0, 0.36)
-        materials: [ PrincipledMaterial { baseColorMap: root.effectivePocketTex; baseColor: "#d5dce6"; roughness: 0.85; metalness: 0.3 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(100, 150, -32)
-        scale: Qt.vector3d(1.0, 3.0, 0.36)
-        materials: [ PrincipledMaterial { baseColorMap: root.effectivePocketTex; baseColor: "#d5dce6"; roughness: 0.85; metalness: 0.3 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(148, 150, 0)
-        scale: Qt.vector3d(0.04, 3.0, 0.28)
-        materials: [ PrincipledMaterial { baseColor: "#1f2730"; roughness: 0.6; metalness: 0.7 } ]
-    }
-    Model {
-        source: "#Cube"
-        position: Qt.vector3d(100, 294, 0)
-        scale: Qt.vector3d(1.0, 0.12, 0.28)
-        materials: [ PrincipledMaterial { baseColor: "#26303c"; roughness: 0.6; metalness: 0.6 } ]
-    }
-
-    // ==================== 2. DOORFRAME HEADER, THRESHOLD & JAMB TRIM ====================
-    // Header lintel above full 100-unit doorway (Y in [288, 300])
+    // ==================== 1. STRUCTURAL DOORFRAME & JAMB PILLARS ====================
+    // Header lintel across 100-unit doorway aperture (Y in [288, 300])
     Model {
         source: "#Cube"
         position: Qt.vector3d(0, 294, 0)
-        scale: Qt.vector3d(1.0, 0.12, 1.0)
+        scale: Qt.vector3d(1.06, 0.12, 0.32)
         materials: [ PrincipledMaterial { baseColor: "#2c3540"; roughness: 0.5; metalness: 0.75 } ]
+    }
+
+    // Left vertical door jamb column (seals tight against left wall)
+    Model {
+        source: "#Cube"
+        position: Qt.vector3d(-51, 144, 0)
+        scale: Qt.vector3d(0.06, 2.88, 0.28)
+        materials: [ PrincipledMaterial { baseColor: "#26303c"; roughness: 0.5; metalness: 0.8 } ]
+    }
+
+    // Right vertical door jamb column (seals tight against right wall)
+    Model {
+        source: "#Cube"
+        position: Qt.vector3d(51, 144, 0)
+        scale: Qt.vector3d(0.06, 2.88, 0.28)
+        materials: [ PrincipledMaterial { baseColor: "#26303c"; roughness: 0.5; metalness: 0.8 } ]
     }
 
     // Flush floor track rail
     Model {
         source: "#Cube"
         position: Qt.vector3d(0, 1, 0)
-        scale: Qt.vector3d(1.0, 0.02, 0.32)
+        scale: Qt.vector3d(1.02, 0.02, 0.28)
         materials: [ PrincipledMaterial { baseColor: "#1e252d"; roughness: 0.4; metalness: 0.85 } ]
     }
 
-    // External metallic jamb trim mounted on pocket faces outside the [-50, +50] doorway clear width
+    // External metallic perimeter trim framing the doorway
     Model {
         source: "#Cube"
-        position: Qt.vector3d(-54, 144, 51.5)
-        scale: Qt.vector3d(0.08, 2.88, 0.03)
+        position: Qt.vector3d(-53, 144, 15)
+        scale: Qt.vector3d(0.04, 2.88, 0.04)
         materials: [ PrincipledMaterial { baseColor: "#37424f"; roughness: 0.4; metalness: 0.8 } ]
     }
     Model {
         source: "#Cube"
-        position: Qt.vector3d(54, 144, 51.5)
-        scale: Qt.vector3d(0.08, 2.88, 0.03)
+        position: Qt.vector3d(53, 144, 15)
+        scale: Qt.vector3d(0.04, 2.88, 0.04)
         materials: [ PrincipledMaterial { baseColor: "#37424f"; roughness: 0.4; metalness: 0.8 } ]
     }
     Model {
         source: "#Cube"
-        position: Qt.vector3d(-54, 144, -51.5)
-        scale: Qt.vector3d(0.08, 2.88, 0.03)
+        position: Qt.vector3d(-53, 144, -15)
+        scale: Qt.vector3d(0.04, 2.88, 0.04)
         materials: [ PrincipledMaterial { baseColor: "#37424f"; roughness: 0.4; metalness: 0.8 } ]
     }
     Model {
         source: "#Cube"
-        position: Qt.vector3d(54, 144, -51.5)
-        scale: Qt.vector3d(0.08, 2.88, 0.03)
+        position: Qt.vector3d(53, 144, -15)
+        scale: Qt.vector3d(0.04, 2.88, 0.04)
         materials: [ PrincipledMaterial { baseColor: "#37424f"; roughness: 0.4; metalness: 0.8 } ]
     }
 
     // ==================== 3. EMISSIVE STATUS LIGHTS ====================
     Model {
         source: "#Cube"
-        position: Qt.vector3d(0, 293, 51.5)
+        position: Qt.vector3d(0, 293, 16.5)
         scale: Qt.vector3d(0.72, 0.05, 0.03)
         materials: [ PrincipledMaterial { baseColor: root.statusColor; lighting: PrincipledMaterial.NoLighting } ]
     }
     Model {
         source: "#Cube"
-        position: Qt.vector3d(0, 293, -51.5)
+        position: Qt.vector3d(0, 293, -16.5)
         scale: Qt.vector3d(0.72, 0.05, 0.03)
         materials: [ PrincipledMaterial { baseColor: root.statusColor; lighting: PrincipledMaterial.NoLighting } ]
     }
@@ -163,13 +126,13 @@ Node {
     // Side status beacon cylinders
     Model {
         source: "#Cylinder"
-        position: Qt.vector3d(-54, 175, 52.5)
+        position: Qt.vector3d(-52, 175, 17)
         scale: Qt.vector3d(0.04, 0.34, 0.04)
         materials: [ PrincipledMaterial { baseColor: root.statusColor; lighting: PrincipledMaterial.NoLighting } ]
     }
     Model {
         source: "#Cylinder"
-        position: Qt.vector3d(54, 175, -52.5)
+        position: Qt.vector3d(52, 175, -17)
         scale: Qt.vector3d(0.04, 0.34, 0.04)
         materials: [ PrincipledMaterial { baseColor: root.statusColor; lighting: PrincipledMaterial.NoLighting } ]
     }

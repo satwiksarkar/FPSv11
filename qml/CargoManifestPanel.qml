@@ -4,17 +4,17 @@ import QtQuick.Layouts
 import FPSLabGame
 
 /**
- * @brief CargoManifestPanel.qml provides the interactive Security Riddle Terminal
- * in the Cargo Warehouse for Project VANGUARD Level 1 (replacing the crane puzzle).
+ * @brief CargoManifestPanel.qml provides the interactive Sphinx Riddle Terminal
+ * for the Key 1 Vault in Project VANGUARD Level 1.
  */
 Rectangle {
     id: root
-    width: 680
-    height: 580
-    color: "#e610141d"
-    border.color: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
+    width: 720
+    height: 560
+    color: "#e60a1017"
+    border.color: (root.puzzleManager && root.puzzleManager.riddleSolved) ? "#2ecc71" : "#00e5ff"
     border.width: 2
-    radius: 4
+    radius: 6
 
     property var puzzleManager: null
     signal closeRequested()
@@ -27,36 +27,45 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 22
-        spacing: 12
+        spacing: 14
 
-        // Header
+        // Terminal Top Banner
         RowLayout {
             Layout.fillWidth: true
+
+            Rectangle {
+                width: 14
+                height: 14
+                radius: 3
+                color: (root.puzzleManager && root.puzzleManager.riddleSolved) ? "#2ecc71" : "#00e5ff"
+            }
 
             ColumnLayout {
                 spacing: 2
                 Text {
-                    text: "CARGO WAREHOUSE // SECURITY RIDDLE ARCHIVE"
-                    color: (root.puzzleManager && root.puzzleManager.craneSolved) ? "#2ecc71" : "#00e5ff"
+                    text: "SECTOR K1 // VAULT SECURITY TERMINAL"
+                    color: (root.puzzleManager && root.puzzleManager.riddleSolved) ? "#2ecc71" : "#00e5ff"
                     font.pixelSize: 16
                     font.bold: true
-                    font.letterSpacing: 1
+                    font.letterSpacing: 1.5
                 }
                 Text {
-                    text: "SPHINX PROTOCOL — COGNITIVE SECURITY ACCESS CHALLENGE"
-                    color: "#95a5a6"
+                    text: "SPHINX PROTOCOL — COGNITIVE DECRYPTION GATEWAY"
+                    color: "#7f8c8d"
                     font.pixelSize: 11
                 }
             }
 
             Item { Layout.fillWidth: true }
 
+            // Close button
             Rectangle {
                 width: 32
                 height: 32
-                color: closeBtnMouse.containsMouse ? "#e74c3c" : "#2c3e50"
-                border.color: "#7f8c8d"
+                color: closeBtnMouse.containsMouse ? "#e74c3c" : "#1b2631"
+                border.color: "#34495e"
                 border.width: 1
+                radius: 3
 
                 Text {
                     anchors.centerIn: parent
@@ -76,64 +85,36 @@ Rectangle {
             }
         }
 
-        // Warehouse Office Clue Status Strip
-        Rectangle {
-            Layout.fillWidth: true
-            height: 32
-            color: (root.puzzleManager && root.puzzleManager.manifestClueFound) ? "#16281e" : "#1a252f"
-            border.color: (root.puzzleManager && root.puzzleManager.manifestClueFound) ? "#2ecc71" : "#34495e"
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 8
-
-                Rectangle {
-                    width: 10
-                    height: 10
-                    radius: 2
-                    color: (root.puzzleManager && root.puzzleManager.manifestClueFound) ? "#2ecc71" : "#f39c12"
-                }
-
-                Text {
-                    text: (root.puzzleManager && root.puzzleManager.manifestClueFound)
-                        ? "LOGISTICS MEMO #402-V RECOVERED: The Chief Engineer's clue points to heavy transmission parts."
-                        : "OPTIONAL CLUE: Logistics Directive #402-V is available on the office desk at (1950, 850)."
-                    color: (root.puzzleManager && root.puzzleManager.manifestClueFound) ? "#2ecc71" : "#bdc3c7"
-                    font.pixelSize: 11
-                }
-            }
-        }
-
-        // Terminal Riddle Screen Box
+        // Terminal CRT Screen Display Box
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#0a0e14"
-            border.color: "#34495e"
-            border.width: 1
+            color: "#05090f"
+            border.color: (root.puzzleManager && root.puzzleManager.riddleSolved) ? "#27ae60" : "#1a3644"
+            border.width: 1.5
+            radius: 4
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.margins: 18
                 spacing: 12
 
-                // CRT Inscribed Riddle
+                // CRT Query Box
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 125
-                    color: "#0f171e"
+                    Layout.preferredHeight: 115
+                    color: "#0a131c"
                     border.color: "#00e5ff"
                     border.width: 1
+                    radius: 3
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 6
+                        anchors.margins: 14
+                        spacing: 8
 
                         Text {
-                            text: "LOGISTICS SECURITY ARCHIVE // ANCIENT TECHNICIAN'S RIDDLE:"
+                            text: "> SECURITY CLEARANCE CHALLENGE // VANGUARD RIDDLE ARCHIVE:"
                             color: "#00e5ff"
                             font.pixelSize: 11
                             font.bold: true
@@ -143,7 +124,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "\"I have teeth that never bite,\n I turn in darkness day and night.\n I drive the iron, winch, and gear,\n Name my core to enter here.\""
+                            text: root.puzzleManager ? ("\"" + root.puzzleManager.currentRiddleText + "\"") : "INITIALIZING SECURITY ARCHIVE..."
                             color: "#ecf0f1"
                             font.pixelSize: 14
                             font.bold: true
@@ -154,7 +135,7 @@ Rectangle {
                 }
 
                 Text {
-                    text: "SELECT THE CORRECT FACILITY IDENTITY:"
+                    text: "SELECT VERIFIED COGNITIVE RESPONSE:"
                     color: "#f39c12"
                     font.pixelSize: 11
                     font.bold: true
@@ -167,40 +148,37 @@ Rectangle {
                     spacing: 8
 
                     Repeater {
-                        model: [
-                            { id: 0, text: "A) THE DRIVE GEAR  —  Rotates mechanical winches, conveyors & gear trains" },
-                            { id: 1, text: "B) THE COOLANT PUMP — Circulates chilled fluorocarbon through heat sinks" },
-                            { id: 2, text: "C) THE PLASMA RELAY — Directs high-voltage energy to containment fields" },
-                            { id: 3, text: "D) THE TURBINE ROTOR — Spins generators to maintain auxiliary power" }
-                        ]
+                        model: root.puzzleManager ? root.puzzleManager.currentRiddleOptions : []
 
                         delegate: Rectangle {
                             id: optCard
                             Layout.fillWidth: true
-                            height: 40
-                            readonly property bool isSelected: root.puzzleManager ? (root.puzzleManager.selectedRiddleOption === modelData.id) : false
-                            readonly property bool isSolved: root.puzzleManager && root.puzzleManager.craneSolved
+                            height: 42
+                            readonly property int optIndex: index
+                            readonly property bool isSelected: root.puzzleManager ? (root.puzzleManager.selectedRiddleOption === optIndex) : false
+                            readonly property bool isSolved: root.puzzleManager && root.puzzleManager.riddleSolved
 
-                            color: isSolved && modelData.id === 0
-                                ? "#1b4d3e"
-                                : (isSelected ? "#1a3a4a" : (optMouse.containsMouse ? "#1c2630" : "#131b24"))
-                            border.color: isSolved && modelData.id === 0
+                            color: isSolved && isSelected
+                                ? "#163a2b"
+                                : (isSelected ? "#133140" : (optMouse.containsMouse ? "#101d28" : "#0c151e"))
+                            border.color: isSolved && isSelected
                                 ? "#2ecc71"
-                                : (isSelected ? "#00e5ff" : "#2c3e50")
-                            border.width: isSelected || (isSolved && modelData.id === 0) ? 2 : 1
-                            radius: 2
+                                : (isSelected ? "#00e5ff" : "#1f2d3d")
+                            border.width: isSelected || (isSolved && isSelected) ? 2 : 1
+                            radius: 3
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.margins: 10
+                                anchors.margins: 12
                                 spacing: 12
 
+                                // Radio indicator
                                 Rectangle {
-                                    width: 16
-                                    height: 16
-                                    radius: 8
-                                    color: optCard.isSelected || (optCard.isSolved && modelData.id === 0) ? "#00e5ff" : "transparent"
-                                    border.color: optCard.isSelected || (optCard.isSolved && modelData.id === 0) ? "#00e5ff" : "#7f8c8d"
+                                    width: 18
+                                    height: 18
+                                    radius: 9
+                                    color: optCard.isSelected ? "#00e5ff" : "transparent"
+                                    border.color: optCard.isSelected ? "#00e5ff" : "#566573"
                                     border.width: 1.5
 
                                     Rectangle {
@@ -208,19 +186,27 @@ Rectangle {
                                         width: 8
                                         height: 8
                                         radius: 4
-                                        color: optCard.isSolved && modelData.id === 0 ? "#2ecc71" : "#ffffff"
-                                        visible: optCard.isSelected || (optCard.isSolved && modelData.id === 0)
+                                        color: optCard.isSolved ? "#2ecc71" : "#ffffff"
+                                        visible: optCard.isSelected
                                     }
                                 }
 
                                 Text {
+                                    readonly property var letters: ["A", "B", "C", "D"]
+                                    text: (optIndex < 4 ? letters[optIndex] : "?") + ") "
+                                    color: optCard.isSelected ? "#00e5ff" : "#7f8c8d"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+
+                                Text {
                                     Layout.fillWidth: true
-                                    text: modelData.text
-                                    color: (optCard.isSolved && modelData.id === 0)
+                                    text: modelData
+                                    color: (optCard.isSolved && optCard.isSelected)
                                         ? "#2ecc71"
-                                        : (optCard.isSelected ? "#00e5ff" : "#ecf0f1")
-                                    font.pixelSize: 12
-                                    font.bold: optCard.isSelected || (optCard.isSolved && modelData.id === 0)
+                                        : (optCard.isSelected ? "#ffffff" : "#bdc3c7")
+                                    font.pixelSize: 13
+                                    font.bold: optCard.isSelected
                                 }
                             }
 
@@ -230,8 +216,8 @@ Rectangle {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (root.puzzleManager && !root.puzzleManager.craneSolved) {
-                                        root.puzzleManager.selectRiddleOption(modelData.id)
+                                    if (root.puzzleManager && !root.puzzleManager.riddleSolved) {
+                                        root.puzzleManager.selectRiddleOption(optCard.optIndex)
                                     }
                                 }
                             }
@@ -242,60 +228,80 @@ Rectangle {
                 // Dynamic Status & Error Feedback
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 32
-                    color: (root.puzzleManager && root.puzzleManager.craneSolved)
-                        ? "#16281e"
-                        : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#2c1517" : "#10161d")
-                    border.color: (root.puzzleManager && root.puzzleManager.craneSolved)
+                    height: 34
+                    color: (root.puzzleManager && root.puzzleManager.riddleSolved)
+                        ? "#142c1f"
+                        : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#2b1417" : "#0a131c")
+                    border.color: (root.puzzleManager && root.puzzleManager.riddleSolved)
                         ? "#2ecc71"
-                        : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#e74c3c" : "#2c3e50")
+                        : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#e74c3c" : "#1b2c3a")
                     border.width: 1
+                    radius: 3
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: {
-                            if (root.puzzleManager && root.puzzleManager.craneSolved) {
-                                return "STATUS: ACCESS GRANTED // K1 CHAMBER BARRIER DISENGAGED"
-                            }
-                            if (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0) {
-                                return root.puzzleManager.riddleFeedback
-                            }
-                            return "SELECT AN OPTION AND SUBMIT TO ATTEMPT COGNITIVE OVERRIDE"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 8
+
+                        Rectangle {
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: (root.puzzleManager && root.puzzleManager.riddleSolved)
+                                ? "#2ecc71"
+                                : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#e74c3c" : "#00e5ff")
                         }
-                        color: (root.puzzleManager && root.puzzleManager.craneSolved)
-                            ? "#2ecc71"
-                            : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#e74c3c" : "#7f8c8d")
-                        font.pixelSize: 11
-                        font.bold: true
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: {
+                                if (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0) {
+                                    return root.puzzleManager.riddleFeedback
+                                }
+                                if (root.puzzleManager && root.puzzleManager.riddleSolved) {
+                                    return "VAULT DOOR UNLOCKED: ACCESS KEY 1 CHAMBER ACCESSIBLE."
+                                }
+                                return "AWAITING SELECTION: Choose correct answer and execute decryption."
+                            }
+                            color: (root.puzzleManager && root.puzzleManager.riddleSolved)
+                                ? "#2ecc71"
+                                : (root.puzzleManager && root.puzzleManager.riddleFeedback.length > 0 ? "#e74c3c" : "#7f8c8d")
+                            font.pixelSize: 11
+                            font.bold: true
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }
         }
 
-        // Bottom Action Controls
+        // Action Buttons Row
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
 
             Button {
                 Layout.fillWidth: true
-                height: 42
-                enabled: root.puzzleManager ? (!root.puzzleManager.craneSolved && root.puzzleManager.selectedRiddleOption >= 0) : false
+                height: 44
+                enabled: root.puzzleManager ? (!root.puzzleManager.riddleSolved && root.puzzleManager.selectedRiddleOption >= 0) : false
 
                 background: Rectangle {
                     color: parent.enabled
-                        ? (parent.down ? "#16a085" : (parent.hovered ? "#00adb5" : "#00838f"))
-                        : "#2c3e50"
-                    border.color: parent.enabled ? "#00e5ff" : "#34495e"
-                    border.width: 1
-                    radius: 2
+                        ? (parent.down ? "#16a085" : (parent.hovered ? "#00c4cc" : "#0097a7"))
+                        : "#1c2833"
+                    border.color: parent.enabled ? "#00e5ff" : "#2c3e50"
+                    border.width: 1.5
+                    radius: 3
                 }
 
                 contentItem: Text {
-                    text: (root.puzzleManager && root.puzzleManager.craneSolved) ? "RIDDLE SOLVED [ACCESS KEY B READY]" : "SUBMIT RIDDLE ANSWER"
+                    text: (root.puzzleManager && root.puzzleManager.riddleSolved)
+                        ? "DECRYPTION COMPLETE // VAULT UNLOCKED"
+                        : "EXECUTE DECRYPTION [SUBMIT]"
                     color: parent.enabled ? "#ffffff" : "#7f8c8d"
                     font.bold: true
                     font.pixelSize: 13
+                    font.letterSpacing: 1
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -308,17 +314,17 @@ Rectangle {
             }
 
             Button {
-                width: 130
-                height: 42
+                width: 150
+                height: 44
                 background: Rectangle {
-                    color: parent.down ? "#1a252f" : (parent.hovered ? "#34495e" : "#2c3e50")
-                    border.color: "#7f8c8d"
+                    color: parent.down ? "#151e27" : (parent.hovered ? "#2c3e50" : "#1f2a36")
+                    border.color: "#566573"
                     border.width: 1
-                    radius: 2
+                    radius: 3
                 }
                 contentItem: Text {
-                    text: "CLOSE [ESC]"
-                    color: "#ffffff"
+                    text: "DISCONNECT [ESC]"
+                    color: "#ecf0f1"
                     font.bold: true
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter

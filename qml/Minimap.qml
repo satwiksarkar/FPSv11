@@ -267,15 +267,13 @@ Rectangle {
             if (levelManager.currentLevel === 1 && puzzleManager) {
                 var isV2 = (levelManager.level1Variant === 2)
                 var puzzles = isV2 ? [
-                    { r: 9, c: 8, solved: puzzleManager.craneSolved, color: "#3498db", label: "RIDDLE" },
-                    { r: 10, c: 62, solved: puzzleManager.powerSolved, color: "#00e5ff", label: "POWER" },
-                    { r: 70, c: 15, solved: puzzleManager.securitySolved, color: "#e74c3c", label: "KEYPAD" },
-                    { r: 66, c: 62, solved: puzzleManager.coolantSolved, color: "#f39c12", label: "GAS/MNT" }
+                    { r: 30, c: 8, solved: puzzleManager.craneSolved, color: "#3498db", label: "RIDDLE" },
+                    { r: 6, c: 36, solved: puzzleManager.powerSolved, color: "#f39c12", label: "SWITCHBOARD" },
+                    { r: 27, c: 41, solved: (levelManager && !levelManager.laserCageActive), color: "#e74c3c", label: "LASER CAGE" }
                 ] : [
-                    { r: 10, c: 10, solved: puzzleManager.craneSolved, color: "#3498db", label: "RIDDLE" },
-                    { r: 9, c: 35, solved: puzzleManager.powerSolved, color: "#00e5ff", label: "POWER" },
-                    { r: 39, c: 13, solved: puzzleManager.securitySolved, color: "#e74c3c", label: "KEYPAD" },
-                    { r: 31, c: 38, solved: puzzleManager.coolantSolved, color: "#f39c12", label: "GAS/MNT" }
+                    { r: 30, c: 8, solved: puzzleManager.craneSolved, color: "#3498db", label: "RIDDLE" },
+                    { r: 6, c: 36, solved: puzzleManager.powerSolved, color: "#f39c12", label: "SWITCHBOARD" },
+                    { r: 27, c: 41, solved: (levelManager && !levelManager.laserCageActive), color: "#e74c3c", label: "LASER CAGE" }
                 ]
 
                 for (var p = 0; p < puzzles.length; ++p) {
@@ -310,24 +308,23 @@ Rectangle {
             if (root.isExpanded && levelManager.currentLevel === 1) {
                 var isV2Labels = (levelManager.level1Variant === 2)
                 var roomLabels = isV2Labels ? [
-                    { name: "CENTRAL PRODUCTION", r: 40, c: 40, col: "#90caf9" },
-                    { name: "RECEIVING AIRLOCK",  r: 68, c: 39, col: "#a5d6a7" },
-                    { name: "ELECTRICAL VAULT",   r: 10, c: 74, col: "#80deea" },
-                    { name: "PASSWORD VAULT",     r: 74, c: 16, col: "#ef9a9a" },
-                    { name: "GAS SUBSTATION",     r: 53, c: 61, col: "#ffe082" },
-                    { name: "MAINTENANCE",        r: 67, c: 64, col: "#ffb74d" },
-                    { name: "ADMIN RECORDS",      r: 61, c: 14, col: "#ce93d8" },
-                    { name: "CARGO WAREHOUSE",    r: 14, c: 15, col: "#b0bec5" },
-                    { name: "FREIGHT ELEVATOR",   r: 7,  c: 40, col: "#ffcc80" }
+                    { name: "CENTRAL SPINE",          r: 24, c: 23, col: "#90caf9" },
+                    { name: "SPAWN AIRLOCK",          r: 42, c: 23, col: "#a5d6a7" },
+                    { name: "SECTOR K1: SPHINX VAULT", r: 31, c: 10, col: "#ef9a9a" },
+                    { name: "SECTOR K2: SHOOTING RANGE", r: 31, c: 38, col: "#ffe082" },
+                    { name: "SECTOR K3: SENTINEL PATROL", r: 11, c: 10, col: "#ce93d8" },
+                    { name: "SECTOR K4: SWITCHBOARD & CATWALK", r: 11, c: 38, col: "#80deea" },
+                    { name: "STORAGE WAREHOUSE",      r: 10, c: 23, col: "#b0bec5" },
+                    { name: "EXIT ELEVATOR",          r: 4,  c: 23, col: "#ffcc80" }
                 ] : [
-                    { name: "CENTRAL HUB",        r: 24, c: 24, col: "#90caf9" },
-                    { name: "SECURITY AIRLOCK",   r: 42, c: 23, col: "#a5d6a7" },
-                    { name: "ELECTRICAL VAULT",   r: 11, c: 44, col: "#80deea" },
-                    { name: "PASSWORD VAULT",     r: 43, c: 12, col: "#ef9a9a" },
-                    { name: "GAS REPAIR",         r: 31, c: 38, col: "#ffe082" },
-                    { name: "ADMIN RECORDS",      r: 32, c: 12, col: "#ce93d8" },
-                    { name: "WAREHOUSE",          r: 12, c: 12, col: "#b0bec5" },
-                    { name: "EXTRACTION",         r: 6,  c: 24, col: "#ffcc80" }
+                    { name: "CENTRAL SPINE",          r: 24, c: 23, col: "#90caf9" },
+                    { name: "SPAWN AIRLOCK",          r: 42, c: 23, col: "#a5d6a7" },
+                    { name: "SECTOR K1: SPHINX VAULT", r: 31, c: 10, col: "#ef9a9a" },
+                    { name: "SECTOR K2: SHOOTING RANGE", r: 31, c: 38, col: "#ffe082" },
+                    { name: "SECTOR K3: SENTINEL PATROL", r: 11, c: 10, col: "#ce93d8" },
+                    { name: "SECTOR K4: SWITCHBOARD & CATWALK", r: 11, c: 38, col: "#80deea" },
+                    { name: "STORAGE WAREHOUSE",      r: 10, c: 23, col: "#b0bec5" },
+                    { name: "EXIT ELEVATOR",          r: 4,  c: 23, col: "#ffcc80" }
                 ]
 
                 ctx.textAlign = "center"

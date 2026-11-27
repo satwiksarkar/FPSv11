@@ -120,9 +120,9 @@ void LevelManager::loadLevel(int levelIndex, bool resetLevelKeys)
 
         // Level 1: Shootable Power Relays & Laser Cage (Key 2: Shooting Gallery)
         m_powerRelays.clear();
-        m_powerRelays.append({ QVector3D(3650.0f, 380.0f, 2750.0f), false, 65.0f });
-        m_powerRelays.append({ QVector3D(4050.0f, 420.0f, 3050.0f), false, 65.0f });
-        m_powerRelays.append({ QVector3D(3750.0f, 390.0f, 3350.0f), false, 65.0f });
+        m_powerRelays.append({ QVector3D(3650.0f, 380.0f, 2750.0f), false, 35.0f });
+        m_powerRelays.append({ QVector3D(4050.0f, 420.0f, 3050.0f), false, 35.0f });
+        m_powerRelays.append({ QVector3D(3750.0f, 390.0f, 3350.0f), false, 35.0f });
         m_laserCageActive = true;
         emit laserCageChanged();
         emit relaysChanged();
@@ -965,6 +965,10 @@ bool LevelManager::evaluateDoorAccess(const Door *door, QString &outDenyReason) 
         const bool keysSatisfied = (count >= reqKeys) && (reqMask == 0 || (mask & reqMask) == reqMask);
 
         if (m_currentLevel == 1) {
+            if (m_puzzleManager && !m_puzzleManager->isPowerSolved()) {
+                outDenyReason = QStringLiteral("[POWER FAILURE] REPAIR ELECTRICAL SWITCHBOARD IN SECTOR K4 TO ENERGIZE BULKHEAD CARD READER");
+                return false;
+            }
             if (!keysSatisfied) {
                 outDenyReason = QStringLiteral("[LOCKED] 4 ACCESS KEYS REQUIRED (%1/4)").arg(count);
                 return false;
@@ -1036,6 +1040,24 @@ QString LevelManager::buildDoorPrompt(const Door *door,
 void LevelManager::updateInteractionPrompt(const QVector3D &playerPos, EnemyManager *enemyManager)
 {
     QString nextPrompt = buildDoorPrompt(m_targetDoor.data(), playerPos, enemyManager);
+
+    // Key 2 Laser Cage proximity prompt
+    if (nextPrompt.isEmpty() && m_currentLevel == 1 && m_laserCageActive) {
+        float cageDist = (QVector2D(playerPos.x(), playerPos.z()) - QVector2D(4150.0f, 2650.0f)).length();
+        if (cageDist < 260.0f) {
+            int rem = relaysRemaining();
+            if (rem == 3) {
+                nextPrompt = QStringLiteral("[LASER CAGE LOCKED] SHOOT THE 3 OVERHEAD POWER RELAYS IN THE CEILING");
+            } else if (rem == 2) {
+                nextPrompt = QStringLiteral("[LASER CAGE LOCKED] SHOOT 2 REMAINING OVERHEAD POWER RELAYS IN THE CEILING");
+            } else if (rem == 1) {
+                nextPrompt = QStringLiteral("[LASER CAGE LOCKED] SHOOT THE FINAL OVERHEAD POWER RELAY IN THE CEILING");
+            } else {
+                nextPrompt = QStringLiteral("ALL OVERHEAD POWER RELAYS DESTROYED — LASER CAGE DISABLED");
+            }
+        }
+    }
+
     if (m_interactionPrompt != nextPrompt) {
         m_interactionPrompt = nextPrompt;
         emit interactionPromptChanged();
@@ -1453,8 +1475,22 @@ void LevelManager::updateKeys(float deltaTime, const QVector3D &playerPos, bool 
         }
         pickup->update(deltaTime);
         if (m_currentLevel == 1) {
+            // Key 0 (Kiting Bay Vault) is locked inside the vault until the riddle is solved
+            if (pickup->keyIndex() == 0 && m_puzzleManager && !m_puzzleManager->isRiddleSolved()) {
+                continue;
+            }
             // Key 1 (Shooting Gallery) is locked inside laser cage until all 3 power relays are destroyed
             if (pickup->keyIndex() == 1 && m_laserCageActive) {
+                if (playerAlive && pickup->isPlayerInRange(playerPos, playerAlive)) {
+                    static float s_lastCageNotice = 0.0f;
+                    int rem = relaysRemaining();
+                    emit doorInteractionFeedback(
+                        QStringLiteral("[CONTAINMENT ACTIVE] SHOOT %1 OVERHEAD POWER RELAY%2 IN THE CEILING TO DISABLE LASER CAGE")
+                            .arg(rem)
+                            .arg(rem > 1 ? QStringLiteral("S") : QStringLiteral("")),
+                        QStringLiteral("#e74c3c")
+                    );
+                }
                 continue;
             }
         }
@@ -1672,10 +1708,10 @@ bool LevelManager::destroyRelay(int index)
     if (remaining == 0 && m_laserCageActive) {
         m_laserCageActive = false;
         emit laserCageChanged();
-        emit doorInteractionFeedback(QStringLiteral("ALL POWER RELAYS DESTROYED! LASER CAGE DISABLED."), QStringLiteral("#00f0ff"));
+        emit doorInteractionFeedback(QStringLiteral("ALL OVERHEAD POWER RELAYS DESTROYED! LASER CAGE DISABLED."), QStringLiteral("#00f0ff"));
         qDebug() << "[LevelManager] All 3 relays destroyed. Laser cage deactivated!";
     } else {
-        emit doorInteractionFeedback(QStringLiteral("POWER RELAY DESTROYED (%1/3 REMAINING)").arg(remaining), QStringLiteral("#f1c40f"));
+        emit doorInteractionFeedback(QStringLiteral("OVERHEAD POWER RELAY DESTROYED (%1/3 REMAINING)").arg(remaining), QStringLiteral("#f1c40f"));
     }
     return true;
 }
@@ -1830,14 +1866,61 @@ void LevelManager::spawnLevel1DynamicEnemies(EnemyManager *enemyManager)
 {
     if (!enemyManager || m_currentLevel != 1) return;
 
+    // Key 1 (Sphinx Vault): Guarantee 3-4 Drones ALWAYS spawn in the Key 1 chamber
+    int k1DroneCount = QRandomGenerator::global()->bounded(3, 5); // 3 or 4 drones
+    QList<QVector3D> k1Anchors = {
+        QVector3D(850.0f, 0.0f, 2850.0f),
+        QVector3D(1250.0f, 0.0f, 2850.0f),
+        QVector3D(850.0f, 0.0f, 3450.0f),
+        QVector3D(1250.0f, 0.0f, 3450.0f)
+    };
+    std::shuffle(k1Anchors.begin(), k1Anchors.end(), *QRandomGenerator::global());
+    for (int i = 0; i < k1DroneCount && i < k1Anchors.size(); ++i) {
+        // Alternating mix of Shock Drones (canShoot=false) and Ranged Gunship Drones (canShoot=true)
+        bool canShoot = (i % 2 == 1);
+        enemyManager->spawnDrone(k1Anchors[i], canShoot);
+    }
+
+    // Key 3 (Sentinel Patrol): Ensure two Sentinel robots ALWAYS guard Key 3 alcove while opening/patrolling
+    enemyManager->spawnSentinel(QVector3D(750.0f, 0.0f, 1150.0f));
+    enemyManager->spawnSentinel(QVector3D(950.0f, 0.0f, 750.0f));
+
+    // Storage Room (Warehouse): Max 2 Sentinels and Max 5 Drones in the storage room
+    enemyManager->spawnSentinel(QVector3D(2050.0f, 0.0f, 950.0f));
+    enemyManager->spawnSentinel(QVector3D(2650.0f, 0.0f, 950.0f));
+
+    int storageDroneCount = QRandomGenerator::global()->bounded(4, 6); // 4 or 5 drones (max 5)
+    QList<QVector3D> storageAnchors = {
+        QVector3D(1950.0f, 0.0f, 750.0f),
+        QVector3D(2350.0f, 0.0f, 750.0f),
+        QVector3D(2750.0f, 0.0f, 750.0f),
+        QVector3D(1950.0f, 0.0f, 1200.0f),
+        QVector3D(2750.0f, 0.0f, 1200.0f)
+    };
+    std::shuffle(storageAnchors.begin(), storageAnchors.end(), *QRandomGenerator::global());
+    for (int i = 0; i < storageDroneCount && i < storageAnchors.size(); ++i) {
+        bool canShoot = (i % 2 == 1);
+        enemyManager->spawnDrone(storageAnchors[i], canShoot);
+    }
+
     auto anchors = LevelData::getLevel1DynamicSpawnAnchors();
     if (anchors.isEmpty()) return;
 
-    // Roll random count 4 to 6 active enemies (reduced for balanced Level 1 difficulty)
-    int count = QRandomGenerator::global()->bounded(4, 7);
+    // Roll random count 2 to 4 active roaming enemies in other sectors
+    int count = QRandomGenerator::global()->bounded(2, 5);
 
     QList<int> indices;
-    for (int i = 0; i < anchors.size(); ++i) indices.append(i);
+    for (int i = 0; i < anchors.size(); ++i) {
+        QVector3D anc = anchors[i];
+        // Exclude the 2 anchors directly at Key 3 since they are permanently assigned Sentinels above
+        if (qAbs(anc.x() - 750.0f) < 50.0f && qAbs(anc.z() - 1150.0f) < 50.0f) continue;
+        if (qAbs(anc.x() - 950.0f) < 50.0f && qAbs(anc.z() - 750.0f) < 50.0f) continue;
+        // Exclude Key 1 chamber anchors since Key 1 has guaranteed 3-4 drones spawned above
+        if (anc.x() < 1400.0f && anc.z() > 2700.0f && anc.z() < 3600.0f) continue;
+        // Exclude Storage Room anchors (handled above)
+        if (anc.x() >= 1700.0f && anc.x() <= 3100.0f && anc.z() >= 600.0f && anc.z() <= 1400.0f) continue;
+        indices.append(i);
+    }
     std::shuffle(indices.begin(), indices.end(), *QRandomGenerator::global());
 
     for (int i = 0; i < count && i < indices.size(); ++i) {
@@ -1854,5 +1937,5 @@ void LevelManager::spawnLevel1DynamicEnemies(EnemyManager *enemyManager)
             enemyManager->spawnSentinel(pos);
         }
     }
-    qDebug() << "[LevelManager] Level 1 dynamically spawned" << count << "enemies from 22 anchors.";
+    qDebug() << "[LevelManager] Level 1 dynamically spawned" << k1DroneCount << "drones in Key 1 room, 2 Sentinels guarding Key 3, plus" << count << "roaming enemies.";
 }
