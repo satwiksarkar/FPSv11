@@ -78,6 +78,21 @@ Item {
     property bool bossCompleted: false
     property bool extractionAvailable: false
 
+    // 20-Minute Campaign Mission Timer properties
+    property string formattedTime: "20:00"
+    property bool isTimerWarning: false
+    property bool isTimerCritical: false
+    property real timeRemaining: 1200.0
+    property bool timerBlink: false
+
+    Timer {
+        id: timerBlinkTimer
+        interval: 400
+        repeat: true
+        running: root.isTimerCritical
+        onTriggered: root.timerBlink = !root.timerBlink
+    }
+
     // Gas Leak Environmental Hazard properties
     property bool gasLeakActive: false
     property bool playerInGasZone: false
@@ -138,10 +153,131 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 300 } }
     }
 
+    // ==================== TOP-CENTER: STATUS & MISSION TIMER BAR ====================
+    Row {
+        id: topCenterBar
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 20
+        spacing: 12
+        z: 10
+
+        // Level Name & Difficulty Badge
+        Rectangle {
+            id: levelNameCard
+            width: levelRow.width + 32
+            height: 34
+            color: "#d9101216"
+            border.color: root.isLevel3 ? "#e74c3c" : "#3498db"
+            border.width: 2
+            radius: 0
+
+            Row {
+                id: levelRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 7
+                    height: 7
+                    color: root.isLevel3 ? "#e74c3c" : "#3498db"
+                }
+
+                Text {
+                    text: root.levelName.toUpperCase()
+                    color: "#ffffff"
+                    font.pixelSize: 12
+                    font.bold: true
+                    font.letterSpacing: 2
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: 12
+                    color: "#4a4f59"
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: diffText.width + 10
+                    height: 18
+                    color: root.difficultyName.toUpperCase() === "HARD" ? "#40e74c3c" : "#402ecc71"
+                    border.color: root.difficultyName.toUpperCase() === "HARD" ? "#e74c3c" : "#2ecc71"
+                    border.width: 1
+
+                    Text {
+                        id: diffText
+                        anchors.centerIn: parent
+                        text: root.difficultyName.toUpperCase()
+                        color: root.difficultyName.toUpperCase() === "HARD" ? "#ff7675" : "#2ecc71"
+                        font.pixelSize: 9
+                        font.bold: true
+                        font.letterSpacing: 1
+                    }
+                }
+            }
+        }
+
+        // 20-Minute Campaign Mission Timer Badge
+        Rectangle {
+            id: missionTimerCard
+            width: timerRow.width + 24
+            height: 34
+            color: root.isTimerCritical
+                   ? (root.timerBlink ? "#59ff3333" : "#33ff3333")
+                   : (root.isTimerWarning ? "#33f39c12" : "#d9101216")
+            border.color: root.isTimerCritical
+                          ? "#ff3333"
+                          : (root.isTimerWarning ? "#f39c12" : "#00f0ff")
+            border.width: root.isTimerCritical ? 2 : 1.5
+            radius: 0
+
+            Row {
+                id: timerRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                // Pulsing Status LED / Stopwatch Indicator
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: root.isTimerCritical
+                           ? (root.timerBlink ? "#ff3333" : "#660000")
+                           : (root.isTimerWarning ? "#f39c12" : "#00f0ff")
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "MISSION CLOCK"
+                    color: "#8395a7"
+                    font.pixelSize: 10
+                    font.bold: true
+                    font.letterSpacing: 1
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.formattedTime
+                    color: root.isTimerCritical
+                           ? "#ff4d4d"
+                           : (root.isTimerWarning ? "#f1c40f" : "#00f0ff")
+                    font.pixelSize: 14
+                    font.bold: true
+                    font.family: "Consolas, Courier, monospace"
+                    font.letterSpacing: 1
+                }
+            }
+        }
+    }
+
     // ==================== BIOHAZARD GAS LEAK WARNING BANNER ====================
     Rectangle {
         id: gasLeakBanner
-        anchors.top: levelNameCard.bottom
+        anchors.top: topCenterBar.bottom
         anchors.topMargin: 8
         anchors.horizontalCenter: parent.horizontalCenter
         width: Math.max(420, bannerRow.width + 40)
@@ -182,71 +318,10 @@ Item {
         }
     }
 
-    // ==================== TOP-CENTER: LEVEL NAME BADGE ====================
-    Rectangle {
-        id: levelNameCard
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: 20
-        width: levelRow.width + 32
-        height: 34
-        color: "#d9101216"
-        border.color: root.isLevel3 ? "#e74c3c" : "#3498db"
-        border.width: 2
-        radius: 0
-
-        Row {
-            id: levelRow
-            anchors.centerIn: parent
-            spacing: 8
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 7
-                height: 7
-                color: root.isLevel3 ? "#e74c3c" : "#3498db"
-            }
-
-            Text {
-                text: root.levelName.toUpperCase()
-                color: "#ffffff"
-                font.pixelSize: 12
-                font.bold: true
-                font.letterSpacing: 2
-            }
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: 12
-                color: "#4a4f59"
-            }
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: diffText.width + 10
-                height: 18
-                color: root.difficultyName.toUpperCase() === "HARD" ? "#40e74c3c" : "#402ecc71"
-                border.color: root.difficultyName.toUpperCase() === "HARD" ? "#e74c3c" : "#2ecc71"
-                border.width: 1
-
-                Text {
-                    id: diffText
-                    anchors.centerIn: parent
-                    text: root.difficultyName.toUpperCase()
-                    color: root.difficultyName.toUpperCase() === "HARD" ? "#ff7675" : "#2ecc71"
-                    font.pixelSize: 9
-                    font.bold: true
-                    font.letterSpacing: 1
-                }
-            }
-        }
-    }
-
     // ==================== TOP-CENTER: LEVEL 3 BOSS HEALTH PANEL ====================
     Rectangle {
         id: bossHealthPanel
-        anchors.top: levelNameCard.bottom
+        anchors.top: gasLeakBanner.visible ? gasLeakBanner.bottom : topCenterBar.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.topMargin: 6
         width: 460

@@ -69,7 +69,41 @@ Item {
                 }
             }
 
-            Item { width: 1; height: 6 }
+            // Mission Clock Display
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 260
+                height: 30
+                color: "#181d24"
+                border.color: (root.gameManager && root.gameManager.isTimerCritical)
+                              ? "#ff3333"
+                              : ((root.gameManager && root.gameManager.isTimerWarning) ? "#f39c12" : "#34495e")
+                border.width: 1
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Text {
+                        text: "⏱️ MISSION TIME:"
+                        color: "#95a5a6"
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: (root.gameManager ? root.gameManager.formattedTime : "20:00") + " REMAINING"
+                        color: (root.gameManager && root.gameManager.isTimerCritical)
+                               ? "#ff4d4d"
+                               : ((root.gameManager && root.gameManager.isTimerWarning) ? "#f1c40f" : "#00f0ff")
+                        font.pixelSize: 11
+                        font.bold: true
+                        font.family: "Consolas, Courier, monospace"
+                    }
+                }
+            }
+
+            Item { width: 1; height: 2 }
 
             // Resume Button
             Button {

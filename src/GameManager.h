@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QtQml/qqmlregistration.h>
+#include "GameConfig.h"
 
 /**
  * @brief The GameManager class manages high-level game states and scoring.
@@ -46,6 +47,15 @@ public:
     Q_PROPERTY(Difficulty difficulty READ difficulty WRITE setDifficulty NOTIFY difficultyChanged)
     Q_PROPERTY(QString difficultyName READ difficultyName NOTIFY difficultyChanged)
 
+    // 20-Minute Campaign Mission Timer properties
+    Q_PROPERTY(float timeRemaining READ timeRemaining NOTIFY timeRemainingChanged)
+    Q_PROPERTY(float totalTime READ totalTime CONSTANT)
+    Q_PROPERTY(QString formattedTime READ formattedTime NOTIFY timeRemainingChanged)
+    Q_PROPERTY(bool isTimeExpired READ isTimeExpired NOTIFY timeRemainingChanged)
+    Q_PROPERTY(bool isTimerWarning READ isTimerWarning NOTIFY timeRemainingChanged)
+    Q_PROPERTY(bool isTimerCritical READ isTimerCritical NOTIFY timeRemainingChanged)
+    Q_PROPERTY(QString gameOverReason READ gameOverReason NOTIFY gameOverReasonChanged)
+
     explicit GameManager(QObject *parent = nullptr);
 
     // Property getters
@@ -60,6 +70,15 @@ public:
     bool isWon() const;
     Difficulty difficulty() const;
     QString difficultyName() const;
+
+    // Mission Timer getters
+    float timeRemaining() const;
+    float totalTime() const;
+    QString formattedTime() const;
+    bool isTimeExpired() const;
+    bool isTimerWarning() const;
+    bool isTimerCritical() const;
+    QString gameOverReason() const;
 
     // Public callable actions
     Q_INVOKABLE void startGame();
@@ -78,6 +97,14 @@ public:
     Q_INVOKABLE void setDifficulty(Difficulty d);
     Q_INVOKABLE void toggleDifficulty();
 
+    // Mission Timer actions
+    Q_INVOKABLE void updateTimer(float deltaTime);
+    Q_INVOKABLE void resetTimer();
+    Q_INVOKABLE void setTimeRemaining(float seconds);
+    Q_INVOKABLE void saveLevelEntryTime();
+    Q_INVOKABLE void restoreLevelEntryTime();
+    Q_INVOKABLE void triggerTimeExpired();
+
 signals:
     void gameStateChanged();
     void scoreChanged(int newScore);
@@ -92,12 +119,27 @@ signals:
     void gameRestarted();
     void levelRestarted();
 
+    // Mission Timer signals
+    void timeRemainingChanged();
+    void timeExpired();
+    void timerWarning();
+    void timerCritical();
+    void gameOverReasonChanged();
+
 private:
     void setGameState(GameState newState);
 
     GameState m_gameState;
     int m_score;
     Difficulty m_difficulty;
+
+    // Mission Timer internal state
+    float m_totalTime;
+    float m_timeRemaining;
+    float m_levelEntryTime;
+    bool m_warningEmitted;
+    bool m_criticalEmitted;
+    QString m_gameOverReason;
 };
 
 #endif // GAMEMANAGER_H

@@ -137,6 +137,23 @@ Window {
                 audioManager.playAmbient(levelManager.currentLevel)
             }
         }
+        onTimerWarning: {
+            root.hitNotificationText = "⚠️ WARNING: 5 MINUTES REMAINING UNTIL VANGUARD LOCKDOWN!"
+            root.hitNotificationColor = "#f39c12"
+            hitNotificationTimer.restart()
+            playSound("enemy_hit")
+        }
+        onTimerCritical: {
+            root.hitNotificationText = "🚨 CRITICAL ALERT: 60 SECONDS UNTIL FACILITY SELF-DESTRUCT!"
+            root.hitNotificationColor = "#ff3333"
+            hitNotificationTimer.restart()
+            playSound("death")
+        }
+        onTimeExpired: {
+            root.hitNotificationText = "☠ MISSION FAILED: 20-MINUTE TIME LIMIT EXPIRED!"
+            root.hitNotificationColor = "#e74c3c"
+            hitNotificationTimer.restart()
+        }
     }
 
     GameWorld {
@@ -439,6 +456,7 @@ Window {
         var savedMedkits = 0
 
         if (isTransition) {
+            gameManager.saveLevelEntryTime()
             savedHealth = (player.healthSystem) ? player.healthSystem.health : player.health
             savedHasHeavy = player.hasHeavyWeapon
             savedCurrentWeapon = player.currentWeaponIndex
@@ -802,6 +820,9 @@ Window {
             } else {
                 root.playerInGasZone = false
             }
+
+            // Update overall 20-minute campaign mission timer
+            gameManager.updateTimer(frameTime)
 
             player.update(frameTime)
             sniperWeapon.update(frameTime)
@@ -1934,6 +1955,12 @@ Window {
         isCrawling: player.isCrawling
         isCrouching: player.isCrouching
         isSprinting: player.isSprinting
+
+        // 20-Minute Campaign Mission Timer bindings
+        formattedTime: gameManager.formattedTime
+        isTimerWarning: gameManager.isTimerWarning
+        isTimerCritical: gameManager.isTimerCritical
+        timeRemaining: gameManager.timeRemaining
     }
 
     Connections {
@@ -2107,8 +2134,11 @@ Window {
         visible: gameManager.isGameOver || (gameManager.isWon && !gameManager.isStoryText)
         isWon: gameManager.isWon
         finalScore: gameManager.score
+        failureReason: gameManager.gameOverReason
+        isTimeExpired: gameManager.isTimeExpired
+        timeRemaining: gameManager.formattedTime
         onRestartRequested: {
-            if (gameManager.isWon) {
+            if (gameManager.isWon || gameManager.isTimeExpired) {
                 root.startNewCampaign(1)
             } else {
                 root.restartCurrentLevel()

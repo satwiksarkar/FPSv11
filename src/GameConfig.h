@@ -10,6 +10,11 @@
  */
 namespace GameConfig {
 
+    // === 20-Minute Campaign Mission Timer ===
+    constexpr float CAMPAIGN_MISSION_TIME = 1200.0f;  // 20 minutes (in seconds) for entire game
+    constexpr float TIMER_WARNING_THRESHOLD = 300.0f; // 5 minutes remaining (yellow warning)
+    constexpr float TIMER_CRITICAL_THRESHOLD = 60.0f; // 1 minute remaining (red urgent alert)
+
     // === Player Movement & Kinematics ===
     constexpr float PLAYER_WALK_SPEED = 300.0f;       // Units per second
     constexpr float PLAYER_CROUCH_SPEED = 140.0f;     // Slower speed while crouching
